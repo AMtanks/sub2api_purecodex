@@ -1,5 +1,3 @@
-import { useAppStore } from '@/stores'
-
 function trimTrailingSlash(value: string): string {
   return value.replace(/\/+$/, '')
 }
@@ -15,14 +13,11 @@ export function getConfiguredAPIBaseURL(): string {
     return trimTrailingSlash(envValue)
   }
 
-  try {
-    const appStore = useAppStore()
-    const storeValue = (appStore.apiBaseUrl || appStore.cachedPublicSettings?.api_base_url || '').trim()
-    if (storeValue) {
-      return trimTrailingSlash(storeValue)
+  if (typeof window !== 'undefined') {
+    const injectedValue = window.__APP_CONFIG__?.api_base_url?.trim() || ''
+    if (injectedValue) {
+      return trimTrailingSlash(injectedValue)
     }
-  } catch {
-    // Store may be unavailable during isolated evaluation.
   }
 
   return '/api/v1'
