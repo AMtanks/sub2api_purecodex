@@ -39,15 +39,18 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   const backendUrl = env.VITE_DEV_PROXY_TARGET || 'http://localhost:8080'
   const devPort = Number(env.VITE_DEV_PORT || 3000)
+  const buildOutDir = env.VITE_BUILD_OUT_DIR || '../backend/internal/web/dist'
 
   return {
     plugins: [
       vue(),
-      checker({
-        vueTsc: true
-      }),
+      mode === 'development'
+        ? checker({
+            vueTsc: true
+          })
+        : null,
       injectPublicSettings(backendUrl)
-    ],
+    ].filter(Boolean),
   resolve: {
     alias: {
       '@': resolve(__dirname, 'src'),
@@ -61,7 +64,7 @@ export default defineConfig(({ mode }) => {
     __INTLIFY_JIT_COMPILATION__: true
   },
   build: {
-    outDir: '../backend/internal/web/dist',
+    outDir: buildOutDir,
     emptyOutDir: true,
     rollupOptions: {
       output: {

@@ -9,6 +9,7 @@ import {
   prepareOAuthBindAccessTokenCookie,
   type WeChatOAuthPublicSettings,
 } from './auth'
+import { buildBackendAPIURL } from '@/utils/backend-url'
 import type {
   User,
   ChangePasswordRequest,
@@ -142,8 +143,6 @@ export function buildOAuthBindingStartURL(
   options: BuildOAuthBindingStartURLOptions = {}
 ): string | null {
   const redirectTo = options.redirectTo?.trim() || '/profile'
-  const apiBase = (import.meta.env.VITE_API_BASE_URL as string | undefined) || '/api/v1'
-  const normalized = apiBase.replace(/\/$/, '')
   const params = new URLSearchParams({
     redirect: redirectTo,
     intent: 'bind_current_user'
@@ -157,7 +156,7 @@ export function buildOAuthBindingStartURL(
     params.set('mode', mode)
   }
 
-  return `${normalized}/auth/oauth/${provider}/bind/start?${params.toString()}`
+  return `${buildBackendAPIURL(`/auth/oauth/${provider}/bind/start`)}?${params.toString()}`
 }
 
 export async function startOAuthBinding(

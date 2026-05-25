@@ -320,6 +320,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { AuthLayout } from '@/components/layout'
+import { buildBackendAPIURL } from '@/utils/backend-url'
 import PendingOAuthCreateAccountForm, {
   type PendingOAuthCreateAccountPayload
 } from '@/components/auth/PendingOAuthCreateAccountForm.vue'
@@ -550,8 +551,6 @@ function resolveRedirectTarget(): string {
 }
 
 function resolveWeChatStartURL(intent: 'bind_current_user' | 'adopt_existing_user_by_email'): string | null {
-  const apiBase = (import.meta.env.VITE_API_BASE_URL as string | undefined) || '/api/v1'
-  const normalized = apiBase.replace(/\/$/, '')
   const mode = resolveRequestedWeChatOAuthMode()
   if (!mode) {
     return null
@@ -562,7 +561,7 @@ function resolveWeChatStartURL(intent: 'bind_current_user' | 'adopt_existing_use
     intent,
   })
 
-  return `${normalized}/auth/oauth/wechat/start?${params.toString()}`
+  return `${buildBackendAPIURL('/auth/oauth/wechat/start')}?${params.toString()}`
 }
 
 function buildExistingAccountResumePath(): string | null {

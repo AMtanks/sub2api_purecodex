@@ -38,7 +38,7 @@ RUN --mount=type=cache,id=sub2api-pnpm-store,target=/pnpm/store \
 # Copy frontend source and build
 COPY frontend/ ./
 RUN --mount=type=cache,id=sub2api-pnpm-store,target=/pnpm/store \
-    pnpm run build
+    pnpm run build:docker
 
 # -----------------------------------------------------------------------------
 # Stage 2: Backend Builder

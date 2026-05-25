@@ -6526,6 +6526,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, watch } from "vue";
 import { useI18n } from "vue-i18n";
+import { getBackendOrigin } from "@/utils/backend-url";
 import { adminAPI } from "@/api";
 import {
   appendAuthSourceDefaultsToUpdateRequest,
@@ -7380,13 +7381,12 @@ const addQuotaNotifyEmail = () => {
 
 const currentOrigin =
   typeof window !== "undefined" ? window.location.origin : "";
+const backendOrigin = computed(() => getBackendOrigin());
 
 // LinuxDo OAuth redirect URL suggestion
 const linuxdoRedirectUrlSuggestion = computed(() => {
-  if (typeof window === "undefined") return "";
-  const origin =
-    window.location.origin ||
-    `${window.location.protocol}//${window.location.host}`;
+  const origin = backendOrigin.value;
+  if (!origin) return "";
   return `${origin}/api/v1/auth/oauth/linuxdo/callback`;
 });
 
@@ -7404,18 +7404,14 @@ async function setAndCopyLinuxdoRedirectUrl() {
 type EmailOAuthProvider = "github" | "google";
 
 const githubOAuthRedirectUrlSuggestion = computed(() => {
-  if (typeof window === "undefined") return "";
-  const origin =
-    window.location.origin ||
-    `${window.location.protocol}//${window.location.host}`;
+  const origin = backendOrigin.value;
+  if (!origin) return "";
   return `${origin}/api/v1/auth/oauth/github/callback`;
 });
 
 const googleOAuthRedirectUrlSuggestion = computed(() => {
-  if (typeof window === "undefined") return "";
-  const origin =
-    window.location.origin ||
-    `${window.location.protocol}//${window.location.host}`;
+  const origin = backendOrigin.value;
+  if (!origin) return "";
   return `${origin}/api/v1/auth/oauth/google/callback`;
 });
 
@@ -7438,10 +7434,8 @@ async function setAndCopyEmailOAuthRedirectUrl(provider: EmailOAuthProvider) {
 }
 
 const wechatRedirectUrlSuggestion = computed(() => {
-  if (typeof window === "undefined") return "";
-  const origin =
-    window.location.origin ||
-    `${window.location.protocol}//${window.location.host}`;
+  const origin = backendOrigin.value;
+  if (!origin) return "";
   return `${origin}/api/v1/auth/oauth/wechat/callback`;
 });
 
@@ -7507,10 +7501,8 @@ async function setAndCopyWeChatRedirectUrl() {
 }
 
 const oidcRedirectUrlSuggestion = computed(() => {
-  if (typeof window === "undefined") return "";
-  const origin =
-    window.location.origin ||
-    `${window.location.protocol}//${window.location.host}`;
+  const origin = backendOrigin.value;
+  if (!origin) return "";
   return `${origin}/api/v1/auth/oauth/oidc/callback`;
 });
 

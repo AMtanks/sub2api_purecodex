@@ -2,6 +2,7 @@
 
 interface ImportMetaEnv {
   readonly VITE_API_BASE_URL: string
+  readonly VITE_BUILD_OUT_DIR?: string
   readonly BASE_URL: string
 }
 
