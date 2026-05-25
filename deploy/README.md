@@ -15,6 +15,8 @@ This directory contains files for deploying Sub2API on Linux servers.
 |------|-------------|
 | `docker-compose.yml` | Docker Compose configuration (named volumes) |
 | `docker-compose.local.yml` | Docker Compose configuration (local directories, easy migration) |
+| `docker-compose.build.yml` | Build from current repository source while keeping local directories and existing `.env` |
+| `docker-compose.reuse-legacy-data.yml` | Build from current repository source while reusing an existing legacy deploy directory |
 | `docker-deploy.sh` | **One-click Docker deployment script (recommended)** |
 | `.env.example` | Docker environment variables template |
 | `DOCKER.md` | Docker Hub documentation |
@@ -95,6 +97,71 @@ docker compose -f docker-compose.local.yml logs -f sub2api
 
 # Access Web UI
 # http://localhost:8080
+```
+
+### Method 3: Build From Current Repository Source
+
+Use this when your Ubuntu server pulls the repository source with `git clone` / `git pull`
+and you want the frontend and backend inside the container to always match the current code,
+without changing the existing `.env`, `data/`, `postgres_data/`, or `redis_data/`.
+
+```bash
+# First deployment only
+git clone https://github.com/Wei-Shaw/sub2api.git
+cd sub2api/deploy
+cp .env.example .env
+mkdir -p data postgres_data redis_data
+
+# Start from current source
+docker compose -f docker-compose.build.yml up -d --build
+```
+
+Update flow on the server:
+
+```bash
+cd /path/to/sub2api
+git pull
+cd deploy
+docker compose -f docker-compose.build.yml up -d --build
+```
+
+Notes:
+- Keep the existing `.env` file in `deploy/.env`; Docker Compose will continue to read it.
+- Keep the existing `deploy/data/`, `deploy/postgres_data/`, and `deploy/redis_data/` directories.
+- Do not run `down -v`; that would remove database/Redis volumes in named-volume mode.
+- With the local-directory build file above, rebuilding only replaces the `sub2api` container image and preserves data directories.
+
+### Method 4: Reuse Existing Legacy Deploy Data
+
+Use this when `http://localhost:8080` is still serving an older Docker deployment
+from another directory, but you want the current repository source to take over
+without re-running setup or losing the old admin/site settings.
+
+Default legacy paths used by this repository:
+
+```bash
+G:/sub2api/sub2api-deploy/data
+G:/sub2api/sub2api-deploy/postgres_data
+G:/sub2api/sub2api-deploy/redis_data
+```
+
+Switch to the current source build while reusing the existing legacy app data
+and the already-running PostgreSQL/Redis containers:
+
+```bash
+cd /path/to/sub2api_purecodex
+docker compose -f deploy/docker-compose.reuse-legacy-data.yml up -d --build
+```
+
+If your old deploy uses a different network name or different service aliases,
+override them first:
+
+```bash
+export LEGACY_DATA_DIR=/path/to/old-deploy/data
+export LEGACY_NETWORK_NAME=oldproject_sub2api-network
+export LEGACY_DATABASE_HOST=postgres
+export LEGACY_REDIS_HOST=redis
+docker compose -f deploy/docker-compose.reuse-legacy-data.yml up -d --build
 ```
 
 ### Deployment Version Comparison
@@ -181,6 +248,57 @@ docker compose -f docker-compose.local.yml up -d
 docker compose -f docker-compose.local.yml down
 rm -rf data/ postgres_data/ redis_data/
 ```
+
+For **source-build local directory version** (`docker-compose.build.yml`):
+
+```bash
+# Start or rebuild from current repository source
+docker compose -f docker-compose.build.yml up -d --build
+
+# Stop services
+docker compose -f docker-compose.build.yml down
+
+# View logs
+docker compose -f docker-compose.build.yml logs -f sub2api
+
+# Restart Sub2API only
+docker compose -f docker-compose.build.yml restart sub2api
+
+# Update after git pull
+docker compose -f docker-compose.build.yml up -d --build
+```
+
+For **source-build + reuse old deploy data** (`docker-compose.reuse-legacy-data.yml`):
+
+```bash
+# Start or rebuild from current repository source while reusing old data dirs
+docker compose -f docker-compose.reuse-legacy-data.yml up -d --build
+
+# Stop services
+docker compose -f docker-compose.reuse-legacy-data.yml down
+
+# View logs
+docker compose -f docker-compose.reuse-legacy-data.yml logs -f sub2api
+
+# Restart Sub2API only
+docker compose -f docker-compose.reuse-legacy-data.yml restart sub2api
+```
+
+### Frontend Change Redeploy
+
+When you change frontend code and want Docker to serve the new page:
+
+```bash
+cd /path/to/sub2api_purecodex
+git pull   # if needed
+docker compose -f deploy/docker-compose.reuse-legacy-data.yml up -d --build
+```
+
+Why this is enough:
+- the frontend production bundle is rebuilt during image build
+- the Go backend embeds that fresh bundle into the server binary
+- PostgreSQL, Redis, and `/app/data` stay on the existing legacy directories
+- no admin/site reconfiguration is needed
 
 For **named volumes version** (docker-compose.yml):
 

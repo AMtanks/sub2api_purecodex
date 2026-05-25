@@ -1,441 +1,246 @@
 <template>
-  <!-- Custom Home Content: Full Page Mode -->
   <div v-if="homeContent" class="min-h-screen">
-    <!-- iframe mode -->
     <iframe
       v-if="isHomeContentUrl"
       :src="homeContent.trim()"
       class="h-screen w-full border-0"
       allowfullscreen
     ></iframe>
-    <!-- HTML mode - SECURITY: homeContent is admin-only setting, XSS risk is acceptable -->
     <div v-else v-html="homeContent"></div>
   </div>
 
-  <!-- Default Home Page -->
-  <div
-    v-else
-    class="relative flex min-h-screen flex-col overflow-hidden bg-gradient-to-br from-gray-50 via-primary-50/30 to-gray-100 dark:from-dark-950 dark:via-dark-900 dark:to-dark-950"
-  >
-    <!-- Background Decorations -->
-    <div class="pointer-events-none absolute inset-0 overflow-hidden">
-      <div
-        class="absolute -right-40 -top-40 h-96 w-96 rounded-full bg-primary-400/20 blur-3xl"
-      ></div>
-      <div
-        class="absolute -bottom-40 -left-40 h-96 w-96 rounded-full bg-primary-500/15 blur-3xl"
-      ></div>
-      <div
-        class="absolute left-1/3 top-1/4 h-72 w-72 rounded-full bg-primary-300/10 blur-3xl"
-      ></div>
-      <div
-        class="absolute bottom-1/4 right-1/4 h-64 w-64 rounded-full bg-primary-400/10 blur-3xl"
-      ></div>
-      <div
-        class="absolute inset-0 bg-[linear-gradient(rgba(20,184,166,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(20,184,166,0.03)_1px,transparent_1px)] bg-[size:64px_64px]"
-      ></div>
+  <div v-else class="home-shell relative min-h-screen overflow-hidden bg-slate-950 text-white">
+    <div class="absolute inset-0">
+      <DarkVeil
+        :hue-shift="14"
+        :noise-intensity="0.075"
+        :scanline-intensity="0.08"
+        :scanline-frequency="0.7"
+        :warp-amount="0.2"
+        :speed="0.42"
+      />
     </div>
+    <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_20%,rgba(20,184,166,0.18),transparent_32%),linear-gradient(180deg,rgba(2,6,23,0.3),rgba(2,6,23,0.96))]"></div>
+    <div class="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(148,163,184,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.06)_1px,transparent_1px)] bg-[size:72px_72px] opacity-35"></div>
 
-    <!-- Header -->
-    <header class="relative z-20 px-6 py-4">
-      <nav class="mx-auto flex max-w-6xl items-center justify-between">
-        <!-- Logo -->
-        <div class="flex items-center">
-          <div class="h-10 w-10 overflow-hidden rounded-xl shadow-md">
-            <img :src="siteLogo || '/logo.png'" alt="Logo" class="h-full w-full object-contain" />
+    <header class="relative z-20 px-5 py-5 sm:px-8">
+      <nav class="mx-auto flex max-w-7xl items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl border border-white/15 bg-white/10 shadow-2xl shadow-primary-500/20 backdrop-blur">
+            <img :src="siteLogo || '/logo.png'" alt="Logo" class="h-8 w-8 object-contain" />
+          </div>
+          <div class="hidden leading-tight sm:block">
+            <p class="text-sm font-semibold text-white">{{ siteName }}</p>
+            <p class="text-xs text-teal-100/62">Sub2API Gateway</p>
           </div>
         </div>
 
-        <!-- Nav Actions -->
-        <div class="flex items-center gap-3">
-          <!-- Language Switcher -->
+        <div class="flex items-center gap-2 sm:gap-3">
           <LocaleSwitcher />
-
-          <!-- Doc Link -->
           <a
             v-if="docUrl"
             :href="docUrl"
             target="_blank"
             rel="noopener noreferrer"
-            class="rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-white"
+            class="home-icon-button"
             :title="t('home.viewDocs')"
           >
             <Icon name="book" size="md" />
           </a>
-
-          <!-- Theme Toggle -->
           <button
-            @click="toggleTheme"
-            class="rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-white"
+            class="home-icon-button"
             :title="isDark ? t('home.switchToLight') : t('home.switchToDark')"
+            @click="toggleTheme"
           >
             <Icon v-if="isDark" name="sun" size="md" />
             <Icon v-else name="moon" size="md" />
           </button>
-
-          <!-- Login / Dashboard Button -->
-          <router-link
-            v-if="isAuthenticated"
-            :to="dashboardPath"
-            class="inline-flex items-center gap-1.5 rounded-full bg-gray-900 py-1 pl-1 pr-2.5 transition-colors hover:bg-gray-800 dark:bg-gray-800 dark:hover:bg-gray-700"
-          >
-            <span
-              class="flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-primary-400 to-primary-600 text-[10px] font-semibold text-white"
-            >
-              {{ userInitial }}
-            </span>
-            <span class="text-xs font-medium text-white">{{ t('home.dashboard') }}</span>
-            <svg
-              class="h-3 w-3 text-gray-400"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25"
-              />
-            </svg>
-          </router-link>
-          <router-link
-            v-else
-            to="/login"
-            class="inline-flex items-center rounded-full bg-gray-900 px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-gray-800 dark:bg-gray-800 dark:hover:bg-gray-700"
-          >
-            {{ t('home.login') }}
+          <router-link :to="isAuthenticated ? dashboardPath : '/login'" class="home-login-link">
+            <span v-if="isAuthenticated" class="home-login-avatar">{{ userInitial }}</span>
+            <span>{{ isAuthenticated ? t('home.dashboard') : t('home.login') }}</span>
+            <Icon name="arrowRight" size="sm" />
           </router-link>
         </div>
       </nav>
     </header>
 
-    <!-- Main Content -->
-    <main class="relative z-10 flex-1 px-6 py-16">
-      <div class="mx-auto max-w-6xl">
-        <!-- Hero Section - Left/Right Layout -->
-        <div class="mb-12 flex flex-col items-center justify-between gap-12 lg:flex-row lg:gap-16">
-          <!-- Left: Text Content -->
-          <div class="flex-1 text-center lg:text-left">
-            <h1
-              class="mb-4 text-4xl font-bold text-gray-900 dark:text-white md:text-5xl lg:text-6xl"
-            >
-              {{ siteName }}
-            </h1>
-            <p class="mb-8 text-lg text-gray-600 dark:text-dark-300 md:text-xl">
-              {{ siteSubtitle }}
-            </p>
+    <main class="relative z-10 px-5 pb-14 pt-10 sm:px-8 lg:pb-20 lg:pt-14">
+      <section class="mx-auto grid max-w-7xl items-center gap-10 lg:grid-cols-[minmax(0,1.02fr)_minmax(380px,0.78fr)] lg:gap-12">
+        <div>
+          <div class="mb-7 inline-flex items-center gap-2 border-b border-teal-300/35 pb-2 text-sm font-medium text-teal-100/85">
+            <span class="h-1.5 w-1.5 rounded-full bg-teal-300 shadow-[0_0_18px_rgba(45,212,191,0.9)]"></span>
+            以真实消耗定价的 AI API 网关
+          </div>
+          <h1 class="home-title">
+            <span class="block">{{ siteName }}</span>
+            <ShinyText
+              text="干净、锋利、按量直达"
+              color="#d8fff9"
+              shine-color="#ffffff"
+              :speed="2.8"
+              :spread="115"
+              class-name="block text-teal-100"
+            />
+          </h1>
+          <p class="mt-7 max-w-2xl text-lg leading-9 text-slate-200/78 md:text-xl">
+            {{ siteSubtitle }}
+            <span class="text-white">把账号池、模型路由、计费扣减和接口兼容收束到同一条稳定链路。</span>
+            不做包装话术，只让每一次请求被清楚记录、准确转发、按真实用量结算。
+          </p>
 
-            <!-- CTA Button -->
-            <div>
-              <router-link
-                :to="isAuthenticated ? dashboardPath : '/login'"
-                class="btn btn-primary px-8 py-3 text-base shadow-lg shadow-primary-500/30"
-              >
-                {{ isAuthenticated ? t('home.goToDashboard') : t('home.getStarted') }}
-                <Icon name="arrowRight" size="md" class="ml-2" :stroke-width="2" />
-              </router-link>
-            </div>
+          <div class="mt-6 inline-flex items-center gap-3 rounded-full border border-emerald-300/20 bg-white/6 px-4 py-2 text-sm text-emerald-100/92 backdrop-blur">
+            <span class="h-2 w-2 rounded-full bg-emerald-300 shadow-[0_0_14px_rgba(110,231,183,0.95)]"></span>
+            <span>约 ￥0.05 / 百万 tokens</span>
           </div>
 
-          <!-- Right: Terminal Animation -->
-          <div class="flex flex-1 justify-center lg:justify-end">
-            <div class="terminal-container">
-              <div class="terminal-window">
-                <!-- Window header -->
-                <div class="terminal-header">
-                  <div class="terminal-buttons">
-                    <span class="btn-close"></span>
-                    <span class="btn-minimize"></span>
-                    <span class="btn-maximize"></span>
-                  </div>
-                  <span class="terminal-title">terminal</span>
+          <div class="mt-9 flex flex-col gap-3 sm:flex-row">
+            <router-link :to="isAuthenticated ? dashboardPath : '/login'" class="home-primary-cta">
+              {{ isAuthenticated ? t('home.goToDashboard') : '立即接入' }}
+              <Icon name="arrowRight" size="md" />
+            </router-link>
+            <a v-if="docUrl" :href="docUrl" target="_blank" rel="noopener noreferrer" class="home-secondary-cta">
+              查看文档
+              <Icon name="externalLink" size="sm" />
+            </a>
+          </div>
+
+          <div class="mt-12 grid gap-4 sm:grid-cols-3">
+            <div v-for="item in valueProps" :key="item.title" class="home-value-item">
+              <Icon :name="item.icon" size="md" class="text-teal-200" />
+              <h3>{{ item.title }}</h3>
+              <p>{{ item.description }}</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="lg:pl-4">
+          <BorderGlow
+            class-name="home-metric-frame"
+            background-color="rgba(3, 22, 28, 0.88)"
+            glow-color="176 86 62"
+            :border-radius="26"
+            :glow-radius="48"
+            :glow-intensity="1.1"
+            :animated="true"
+            :colors="['#14b8a6', '#38bdf8', '#f59e0b']"
+          >
+            <div class="home-metric-panel">
+              <div class="flex items-center justify-between gap-4">
+                <div>
+                  <p class="text-sm font-medium text-teal-100/68">近 24h 汇率估算</p>
+                  <h2 class="mt-2 text-2xl font-semibold text-white">1 元约使用</h2>
                 </div>
-                <!-- Terminal content -->
-                <div class="terminal-body">
-                  <div class="code-line line-1">
-                    <span class="code-prompt">$</span>
-                    <span class="code-cmd">curl</span>
-                    <span class="code-flag">-X POST</span>
-                    <span class="code-url">/v1/messages</span>
-                  </div>
-                  <div class="code-line line-2">
-                    <span class="code-comment"># Routing to upstream...</span>
-                  </div>
-                  <div class="code-line line-3">
-                    <span class="code-success">200 OK</span>
-                    <span class="code-response">{ "content": "Hello!" }</span>
-                  </div>
-                  <div class="code-line line-4">
-                    <span class="code-prompt">$</span>
-                    <span class="cursor"></span>
-                  </div>
+                <div class="rounded-2xl border border-teal-300/20 bg-teal-300/10 p-3 text-teal-100">
+                  <Icon name="bolt" size="lg" />
                 </div>
               </div>
+
+              <div class="mt-8">
+                <div class="flex items-end gap-3">
+                  <CountUp
+                    :from="0"
+                    :to="tokensPerCnyMillion"
+                    :duration="1.6"
+                    :separator="','"
+                    class-name="home-token-number"
+                  />
+                  <span class="pb-3 text-2xl font-semibold text-teal-100/90">M tokens</span>
+                </div>
+                <p class="mt-3 text-sm text-slate-300/72">
+                  基于后端近 24 小时总 Token 与实际扣费自动计算，每 1 小时刷新一次。
+                </p>
+              </div>
+
+              <div class="mt-8 grid gap-3 sm:grid-cols-2">
+                <div class="home-stat-box">
+                  <span>24h Tokens</span>
+                  <strong>
+                    <CountUp :from="0" :to="homeStats?.total_tokens ?? 0" :duration="1.2" separator="," />
+                  </strong>
+                </div>
+                <div class="home-stat-box">
+                  <span>24h Cost</span>
+                  <strong>{{ formattedCost }}</strong>
+                </div>
+              </div>
+
+              <div class="mt-7 flex items-center justify-between border-t border-white/10 pt-5 text-xs text-slate-300/68">
+                <span>{{ statsStatusText }}</span>
+                <span>Window {{ homeStats?.window_hours ?? 24 }}h</span>
+              </div>
+            </div>
+          </BorderGlow>
+        </div>
+      </section>
+
+      <section class="mx-auto mt-16 max-w-7xl lg:mt-20">
+        <div class="grid gap-5 lg:grid-cols-[0.75fr_1.25fr]">
+          <div class="home-section-copy">
+            <ShinyText
+              text="已支持的 AI 模型"
+              color="#8bded5"
+              shine-color="#ffffff"
+              :speed="3"
+              :delay="0.4"
+              :spread="125"
+            />
+            <h2>以 GPT-5.5 为首的高阶模型矩阵</h2>
+            <p>主力模型优先调度，辅以轻量、编程与兼容场景模型，统一落到同一套 API 接入与计费链路。</p>
+          </div>
+          <div class="home-model-grid">
+            <div v-for="model in supportedModels" :key="model.name" class="home-model-card" :class="{ primary: model.primary }">
+              <span>{{ model.role }}</span>
+              <strong>{{ model.name }}</strong>
+              <p>{{ model.description }}</p>
             </div>
           </div>
         </div>
-
-        <!-- Feature Tags - Centered -->
-        <div class="mb-12 flex flex-wrap items-center justify-center gap-4 md:gap-6">
-          <div
-            class="inline-flex items-center gap-2.5 rounded-full border border-gray-200/50 bg-white/80 px-5 py-2.5 shadow-sm backdrop-blur-sm dark:border-dark-700/50 dark:bg-dark-800/80"
-          >
-            <Icon name="swap" size="sm" class="text-primary-500" />
-            <span class="text-sm font-medium text-gray-700 dark:text-dark-200">{{
-              t('home.tags.subscriptionToApi')
-            }}</span>
-          </div>
-          <div
-            class="inline-flex items-center gap-2.5 rounded-full border border-gray-200/50 bg-white/80 px-5 py-2.5 shadow-sm backdrop-blur-sm dark:border-dark-700/50 dark:bg-dark-800/80"
-          >
-            <Icon name="shield" size="sm" class="text-primary-500" />
-            <span class="text-sm font-medium text-gray-700 dark:text-dark-200">{{
-              t('home.tags.stickySession')
-            }}</span>
-          </div>
-          <div
-            class="inline-flex items-center gap-2.5 rounded-full border border-gray-200/50 bg-white/80 px-5 py-2.5 shadow-sm backdrop-blur-sm dark:border-dark-700/50 dark:bg-dark-800/80"
-          >
-            <Icon name="chart" size="sm" class="text-primary-500" />
-            <span class="text-sm font-medium text-gray-700 dark:text-dark-200">{{
-              t('home.tags.realtimeBilling')
-            }}</span>
-          </div>
-        </div>
-
-        <!-- Features Grid -->
-        <div class="mb-12 grid gap-6 md:grid-cols-3">
-          <!-- Feature 1: Unified Gateway -->
-          <div
-            class="group rounded-2xl border border-gray-200/50 bg-white/60 p-6 backdrop-blur-sm transition-all duration-300 hover:shadow-xl hover:shadow-primary-500/10 dark:border-dark-700/50 dark:bg-dark-800/60"
-          >
-            <div
-              class="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg shadow-blue-500/30 transition-transform group-hover:scale-110"
-            >
-              <Icon name="server" size="lg" class="text-white" />
-            </div>
-            <h3 class="mb-2 text-lg font-semibold text-gray-900 dark:text-white">
-              {{ t('home.features.unifiedGateway') }}
-            </h3>
-            <p class="text-sm leading-relaxed text-gray-600 dark:text-dark-400">
-              {{ t('home.features.unifiedGatewayDesc') }}
-            </p>
-          </div>
-
-          <!-- Feature 2: Account Pool -->
-          <div
-            class="group rounded-2xl border border-gray-200/50 bg-white/60 p-6 backdrop-blur-sm transition-all duration-300 hover:shadow-xl hover:shadow-primary-500/10 dark:border-dark-700/50 dark:bg-dark-800/60"
-          >
-            <div
-              class="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 shadow-lg shadow-primary-500/30 transition-transform group-hover:scale-110"
-            >
-              <svg
-                class="h-6 w-6 text-white"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                stroke-width="1.5"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z"
-                />
-              </svg>
-            </div>
-            <h3 class="mb-2 text-lg font-semibold text-gray-900 dark:text-white">
-              {{ t('home.features.multiAccount') }}
-            </h3>
-            <p class="text-sm leading-relaxed text-gray-600 dark:text-dark-400">
-              {{ t('home.features.multiAccountDesc') }}
-            </p>
-          </div>
-
-          <!-- Feature 3: Billing & Quota -->
-          <div
-            class="group rounded-2xl border border-gray-200/50 bg-white/60 p-6 backdrop-blur-sm transition-all duration-300 hover:shadow-xl hover:shadow-primary-500/10 dark:border-dark-700/50 dark:bg-dark-800/60"
-          >
-            <div
-              class="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 shadow-lg shadow-purple-500/30 transition-transform group-hover:scale-110"
-            >
-              <svg
-                class="h-6 w-6 text-white"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                stroke-width="1.5"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z"
-                />
-              </svg>
-            </div>
-            <h3 class="mb-2 text-lg font-semibold text-gray-900 dark:text-white">
-              {{ t('home.features.balanceQuota') }}
-            </h3>
-            <p class="text-sm leading-relaxed text-gray-600 dark:text-dark-400">
-              {{ t('home.features.balanceQuotaDesc') }}
-            </p>
-          </div>
-        </div>
-
-        <!-- Supported Providers -->
-        <div class="mb-8 text-center">
-          <h2 class="mb-3 text-2xl font-bold text-gray-900 dark:text-white">
-            {{ t('home.providers.title') }}
-          </h2>
-          <p class="text-sm text-gray-600 dark:text-dark-400">
-            {{ t('home.providers.description') }}
-          </p>
-        </div>
-
-        <div class="mb-16 flex flex-wrap items-center justify-center gap-4">
-          <!-- Claude - Supported -->
-          <div
-            class="flex items-center gap-2 rounded-xl border border-primary-200 bg-white/60 px-5 py-3 ring-1 ring-primary-500/20 backdrop-blur-sm dark:border-primary-800 dark:bg-dark-800/60"
-          >
-            <div
-              class="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-orange-400 to-orange-500"
-            >
-              <span class="text-xs font-bold text-white">C</span>
-            </div>
-            <span class="text-sm font-medium text-gray-700 dark:text-dark-200">{{ t('home.providers.claude') }}</span>
-            <span
-              class="rounded bg-primary-100 px-1.5 py-0.5 text-[10px] font-medium text-primary-600 dark:bg-primary-900/30 dark:text-primary-400"
-              >{{ t('home.providers.supported') }}</span
-            >
-          </div>
-          <!-- GPT - Supported -->
-          <div
-            class="flex items-center gap-2 rounded-xl border border-primary-200 bg-white/60 px-5 py-3 ring-1 ring-primary-500/20 backdrop-blur-sm dark:border-primary-800 dark:bg-dark-800/60"
-          >
-            <div
-              class="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-green-500 to-green-600"
-            >
-              <span class="text-xs font-bold text-white">G</span>
-            </div>
-            <span class="text-sm font-medium text-gray-700 dark:text-dark-200">GPT</span>
-            <span
-              class="rounded bg-primary-100 px-1.5 py-0.5 text-[10px] font-medium text-primary-600 dark:bg-primary-900/30 dark:text-primary-400"
-              >{{ t('home.providers.supported') }}</span
-            >
-          </div>
-          <!-- Gemini - Supported -->
-          <div
-            class="flex items-center gap-2 rounded-xl border border-primary-200 bg-white/60 px-5 py-3 ring-1 ring-primary-500/20 backdrop-blur-sm dark:border-primary-800 dark:bg-dark-800/60"
-          >
-            <div
-              class="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-blue-600"
-            >
-              <span class="text-xs font-bold text-white">G</span>
-            </div>
-            <span class="text-sm font-medium text-gray-700 dark:text-dark-200">{{ t('home.providers.gemini') }}</span>
-            <span
-              class="rounded bg-primary-100 px-1.5 py-0.5 text-[10px] font-medium text-primary-600 dark:bg-primary-900/30 dark:text-primary-400"
-              >{{ t('home.providers.supported') }}</span
-            >
-          </div>
-          <!-- Antigravity - Supported -->
-          <div
-            class="flex items-center gap-2 rounded-xl border border-primary-200 bg-white/60 px-5 py-3 ring-1 ring-primary-500/20 backdrop-blur-sm dark:border-primary-800 dark:bg-dark-800/60"
-          >
-            <div
-              class="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-rose-500 to-pink-600"
-            >
-              <span class="text-xs font-bold text-white">A</span>
-            </div>
-            <span class="text-sm font-medium text-gray-700 dark:text-dark-200">{{ t('home.providers.antigravity') }}</span>
-            <span
-              class="rounded bg-primary-100 px-1.5 py-0.5 text-[10px] font-medium text-primary-600 dark:bg-primary-900/30 dark:text-primary-400"
-              >{{ t('home.providers.supported') }}</span
-            >
-          </div>
-          <!-- More - Coming Soon -->
-          <div
-            class="flex items-center gap-2 rounded-xl border border-gray-200/50 bg-white/40 px-5 py-3 opacity-60 backdrop-blur-sm dark:border-dark-700/50 dark:bg-dark-800/40"
-          >
-            <div
-              class="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-gray-500 to-gray-600"
-            >
-              <span class="text-xs font-bold text-white">+</span>
-            </div>
-            <span class="text-sm font-medium text-gray-700 dark:text-dark-200">{{ t('home.providers.more') }}</span>
-            <span
-              class="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-500 dark:bg-dark-700 dark:text-dark-400"
-              >{{ t('home.providers.soon') }}</span
-            >
-          </div>
-        </div>
-      </div>
+      </section>
     </main>
 
-    <!-- Footer -->
-    <footer class="relative z-10 border-t border-gray-200/50 px-6 py-8 dark:border-dark-800/50">
-      <div
-        class="mx-auto flex max-w-6xl flex-col items-center justify-center gap-4 text-center sm:flex-row sm:text-left"
-      >
-        <p class="text-sm text-gray-500 dark:text-dark-400">
-          &copy; {{ currentYear }} {{ siteName }}. {{ t('home.footer.allRightsReserved') }}
-        </p>
-        <div class="flex items-center gap-4">
-          <a
-            v-if="docUrl"
-            :href="docUrl"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="text-sm text-gray-500 transition-colors hover:text-gray-700 dark:text-dark-400 dark:hover:text-white"
-          >
-            {{ t('home.docs') }}
-          </a>
-          <a
-            :href="githubUrl"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="text-sm text-gray-500 transition-colors hover:text-gray-700 dark:text-dark-400 dark:hover:text-white"
-          >
-            GitHub
-          </a>
-        </div>
+    <footer class="relative z-10 border-t border-white/10 px-5 py-7 sm:px-8">
+      <div class="mx-auto flex max-w-7xl flex-col justify-between gap-3 text-sm text-slate-400 sm:flex-row">
+        <span>&copy; {{ currentYear }} {{ siteName }}. {{ t('home.footer.allRightsReserved') }}</span>
+        <a :href="githubUrl" target="_blank" rel="noopener noreferrer" class="transition-colors hover:text-white">GitHub</a>
       </div>
     </footer>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore, useAppStore } from '@/stores'
 import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
 import Icon from '@/components/icons/Icon.vue'
+import ShinyText from '@/components/effects/ShinyText.vue'
+import CountUp from '@/components/effects/CountUp.vue'
+import DarkVeil from '@/components/effects/DarkVeil.vue'
+import BorderGlow from '@/components/effects/BorderGlow.vue'
+import { getPublicHomeUsageStats, type PublicHomeUsageStats } from '@/api/home'
 
 const { t } = useI18n()
 
 const authStore = useAuthStore()
 const appStore = useAppStore()
 
-// Site settings - directly from appStore (already initialized from injected config)
 const siteName = computed(() => appStore.cachedPublicSettings?.site_name || appStore.siteName || 'Sub2API')
 const siteLogo = computed(() => appStore.cachedPublicSettings?.site_logo || appStore.siteLogo || '')
 const siteSubtitle = computed(() => appStore.cachedPublicSettings?.site_subtitle || 'AI API Gateway Platform')
 const docUrl = computed(() => appStore.cachedPublicSettings?.doc_url || appStore.docUrl || '')
 const homeContent = computed(() => appStore.cachedPublicSettings?.home_content || '')
 
-// Check if homeContent is a URL (for iframe display)
 const isHomeContentUrl = computed(() => {
   const content = homeContent.value.trim()
   return content.startsWith('http://') || content.startsWith('https://')
 })
 
-// Theme
 const isDark = ref(document.documentElement.classList.contains('dark'))
+const homeStats = ref<PublicHomeUsageStats | null>(null)
+const statsError = ref(false)
+let statsTimer: ReturnType<typeof setInterval> | null = null
 
-// GitHub URL
 const githubUrl = 'https://github.com/Wei-Shaw/sub2api'
-
-// Auth state
 const isAuthenticated = computed(() => authStore.isAuthenticated)
 const isAdmin = computed(() => authStore.isAdmin)
 const dashboardPath = computed(() => isAdmin.value ? '/admin/dashboard' : '/dashboard')
@@ -444,18 +249,70 @@ const userInitial = computed(() => {
   if (!user || !user.email) return ''
   return user.email.charAt(0).toUpperCase()
 })
-
-// Current year for footer
 const currentYear = computed(() => new Date().getFullYear())
 
-// Toggle theme
+const valueProps = [
+  {
+    title: '永不掺水',
+    description: '所有费用从后端真实 usage、Token 与扣费记录汇总，不用前端估算冒充账单口径。',
+    icon: 'shield' as const
+  },
+  {
+    title: '一键接入',
+    description: '兼容主流 OpenAI 风格调用，统一 Base URL 与 Key 管理，把迁移成本压到最低。',
+    icon: 'link' as const
+  },
+  {
+    title: '按量计费',
+    description: '按请求实际消耗扣减余额或订阅额度，Token、成本、倍率和明细可追踪。',
+    icon: 'dollar' as const
+  }
+]
+
+const supportedModels = [
+  {
+    name: 'GPT-5.5',
+    role: 'Primary',
+    description: '主力高阶推理与生成模型，面向复杂任务优先调度。',
+    primary: true
+  },
+  {
+    name: 'GPT-5.4',
+    role: 'Advanced',
+    description: '稳定高质量输出，适合通用生产流量。',
+    primary: false
+  },
+  {
+    name: 'GPT-5.4-mini',
+    role: 'Efficient',
+    description: '更轻量的速度与成本平衡选项。',
+    primary: false
+  },
+  {
+    name: 'GPT-5.3-Codex',
+    role: 'Code',
+    description: '面向代码、Agent 与工程自动化场景。',
+    primary: false
+  }
+]
+
+const tokensPerCnyMillion = computed(() => Number((homeStats.value?.tokens_per_cny_million ?? 0).toFixed(2)))
+const formattedCost = computed(() => {
+  const cost = homeStats.value?.total_actual_cost ?? 0
+  return `$${cost.toFixed(cost >= 1 ? 2 : 4)}`
+})
+const statsStatusText = computed(() => {
+  if (statsError.value) return '统计暂不可用'
+  if (!homeStats.value) return '正在读取后端统计'
+  return `更新于 ${new Date(homeStats.value.updated_at).toLocaleTimeString()}`
+})
+
 function toggleTheme() {
   isDark.value = !isDark.value
   document.documentElement.classList.toggle('dark', isDark.value)
   localStorage.setItem('theme', isDark.value ? 'dark' : 'light')
 }
 
-// Initialize theme
 function initTheme() {
   const savedTheme = localStorage.getItem('theme')
   if (
@@ -467,178 +324,281 @@ function initTheme() {
   }
 }
 
+async function refreshHomeStats() {
+  try {
+    homeStats.value = await getPublicHomeUsageStats()
+    statsError.value = false
+  } catch {
+    statsError.value = true
+  }
+}
+
 onMounted(() => {
   initTheme()
-
-  // Check auth state
   authStore.checkAuth()
-
-  // Ensure public settings are loaded (will use cache if already loaded from injected config)
   if (!appStore.publicSettingsLoaded) {
     appStore.fetchPublicSettings()
   }
+  refreshHomeStats()
+  statsTimer = setInterval(refreshHomeStats, 60 * 60 * 1000)
+})
+
+onBeforeUnmount(() => {
+  if (statsTimer) clearInterval(statsTimer)
 })
 </script>
 
 <style scoped>
-/* Terminal Container */
-.terminal-container {
-  position: relative;
-  display: inline-block;
+.home-shell {
+  letter-spacing: 0;
 }
 
-/* Terminal Window */
-.terminal-window {
-  width: 420px;
-  background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
-  border-radius: 14px;
-  box-shadow:
-    0 25px 50px -12px rgba(0, 0, 0, 0.4),
-    0 0 0 1px rgba(255, 255, 255, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  overflow: hidden;
-  transform: perspective(1000px) rotateX(2deg) rotateY(-2deg);
-  transition: transform 0.3s ease;
-}
-
-.terminal-window:hover {
-  transform: perspective(1000px) rotateX(0deg) rotateY(0deg) translateY(-4px);
-}
-
-/* Terminal Header */
-.terminal-header {
-  display: flex;
+.home-icon-button {
+  display: inline-flex;
+  height: 2.5rem;
+  width: 2.5rem;
   align-items: center;
-  padding: 12px 16px;
-  background: rgba(30, 41, 59, 0.8);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid rgb(255 255 255 / 12%);
+  background: rgb(255 255 255 / 7%);
+  color: rgb(204 251 241 / 78%);
+  backdrop-filter: blur(18px);
+  transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
 }
 
-.terminal-buttons {
-  display: flex;
-  gap: 8px;
+.home-icon-button:hover {
+  border-color: rgb(94 234 212 / 42%);
+  background: rgb(20 184 166 / 14%);
+  color: white;
 }
 
-.terminal-buttons span {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-}
-
-.btn-close {
-  background: #ef4444;
-}
-.btn-minimize {
-  background: #eab308;
-}
-.btn-maximize {
-  background: #22c55e;
-}
-
-.terminal-title {
-  flex: 1;
-  text-align: center;
-  font-size: 12px;
-  font-family: ui-monospace, monospace;
-  color: #64748b;
-  margin-right: 52px;
-}
-
-/* Terminal Body */
-.terminal-body {
-  padding: 20px 24px;
-  font-family: ui-monospace, 'Fira Code', monospace;
-  font-size: 14px;
-  line-height: 2;
-}
-
-.code-line {
-  display: flex;
+.home-login-link {
+  display: inline-flex;
+  min-height: 2.5rem;
   align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  opacity: 0;
-  animation: line-appear 0.5s ease forwards;
+  gap: 0.45rem;
+  border-radius: 999px;
+  border: 1px solid rgb(94 234 212 / 32%);
+  background: rgb(8 47 73 / 46%);
+  padding: 0.45rem 0.85rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: white;
+  box-shadow: 0 0 34px rgb(20 184 166 / 12%);
+  backdrop-filter: blur(18px);
+  transition: transform 0.2s ease, background 0.2s ease;
 }
 
-.line-1 {
-  animation-delay: 0.3s;
-}
-.line-2 {
-  animation-delay: 1s;
-}
-.line-3 {
-  animation-delay: 1.8s;
-}
-.line-4 {
-  animation-delay: 2.5s;
+.home-login-link:hover {
+  transform: translateY(-1px);
+  background: rgb(13 148 136 / 26%);
 }
 
-@keyframes line-appear {
-  from {
-    opacity: 0;
-    transform: translateY(5px);
+.home-login-avatar {
+  display: inline-flex;
+  height: 1.35rem;
+  width: 1.35rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #2dd4bf, #0ea5e9);
+  font-size: 0.68rem;
+}
+
+.home-title {
+  max-width: 760px;
+  font-size: clamp(3.2rem, 8vw, 7.4rem);
+  font-weight: 800;
+  line-height: 0.95;
+  color: white;
+}
+
+.home-primary-cta,
+.home-secondary-cta {
+  display: inline-flex;
+  min-height: 3.25rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  border-radius: 999px;
+  padding: 0.8rem 1.35rem;
+  font-size: 0.95rem;
+  font-weight: 800;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.home-primary-cta {
+  background: linear-gradient(135deg, #14b8a6, #0ea5e9);
+  color: white;
+  box-shadow: 0 18px 54px rgb(20 184 166 / 28%);
+}
+
+.home-secondary-cta {
+  border: 1px solid rgb(255 255 255 / 18%);
+  background: rgb(255 255 255 / 7%);
+  color: rgb(226 232 240 / 92%);
+  backdrop-filter: blur(18px);
+}
+
+.home-primary-cta:hover,
+.home-secondary-cta:hover {
+  transform: translateY(-2px);
+}
+
+.home-value-item {
+  min-height: 12.4rem;
+  border-left: 1px solid rgb(94 234 212 / 32%);
+  background: linear-gradient(90deg, rgb(20 184 166 / 12%), transparent);
+  padding: 1.1rem 1.05rem;
+}
+
+.home-value-item h3 {
+  margin-top: 1.15rem;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: white;
+}
+
+.home-value-item p {
+  margin-top: 0.75rem;
+  font-size: 0.9rem;
+  line-height: 1.75;
+  color: rgb(203 213 225 / 74%);
+}
+
+.home-metric-frame {
+  min-height: 520px;
+}
+
+.home-metric-panel {
+  min-height: 520px;
+  padding: 1.5rem;
+}
+
+.home-token-number {
+  font-size: clamp(4rem, 9vw, 7rem);
+  font-weight: 850;
+  line-height: 0.9;
+  color: white;
+  text-shadow: 0 0 40px rgb(45 212 191 / 24%);
+}
+
+.home-stat-box {
+  min-height: 6.3rem;
+  border: 1px solid rgb(255 255 255 / 10%);
+  background: rgb(255 255 255 / 6%);
+  padding: 1rem;
+}
+
+.home-stat-box span {
+  display: block;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: rgb(153 246 228 / 64%);
+}
+
+.home-stat-box strong {
+  display: block;
+  margin-top: 0.8rem;
+  overflow-wrap: anywhere;
+  font-size: 1.2rem;
+  color: white;
+}
+
+.home-section-copy h2 {
+  margin-top: 1.2rem;
+  max-width: 24rem;
+  font-size: clamp(2rem, 4vw, 3.6rem);
+  font-weight: 820;
+  line-height: 1.02;
+  color: white;
+}
+
+.home-section-copy p {
+  margin-top: 1.2rem;
+  max-width: 30rem;
+  font-size: 1rem;
+  line-height: 1.9;
+  color: rgb(203 213 225 / 72%);
+}
+
+.home-model-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.home-model-card {
+  min-height: 8.5rem;
+  border: 1px solid rgb(255 255 255 / 10%);
+  background: linear-gradient(135deg, rgb(15 23 42 / 62%), rgb(6 78 59 / 18%));
+  padding: 1.15rem;
+}
+
+.home-model-card.primary {
+  min-height: 10.5rem;
+  border-color: rgb(94 234 212 / 38%);
+  background:
+    linear-gradient(135deg, rgb(20 184 166 / 28%), rgb(14 165 233 / 16%)),
+    rgb(15 23 42 / 72%);
+}
+
+.home-model-card span {
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: rgb(45 212 191 / 82%);
+}
+
+.home-model-card strong {
+  display: block;
+  margin-top: 0.55rem;
+  font-size: clamp(1.45rem, 3vw, 2.5rem);
+  color: white;
+}
+
+.home-model-card p {
+  margin-top: 0.75rem;
+  font-size: 0.9rem;
+  line-height: 1.65;
+  color: rgb(203 213 225 / 72%);
+}
+
+@media (min-width: 768px) {
+  .home-model-grid {
+    grid-template-columns: 1.2fr 1fr;
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+
+  .home-model-card.primary {
+    grid-row: span 2;
   }
 }
 
-.code-prompt {
-  color: #22c55e;
-  font-weight: bold;
-}
-.code-cmd {
-  color: #38bdf8;
-}
-.code-flag {
-  color: #a78bfa;
-}
-.code-url {
-  color: #14b8a6;
-}
-.code-comment {
-  color: #64748b;
-  font-style: italic;
-}
-.code-success {
-  color: #22c55e;
-  background: rgba(34, 197, 94, 0.15);
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-weight: 600;
-}
-.code-response {
-  color: #fbbf24;
-}
-
-/* Blinking Cursor */
-.cursor {
-  display: inline-block;
-  width: 8px;
-  height: 16px;
-  background: #22c55e;
-  animation: blink 1s step-end infinite;
-}
-
-@keyframes blink {
-  0%,
-  50% {
-    opacity: 1;
+@media (max-width: 640px) {
+  .home-title {
+    font-size: 3.4rem;
   }
-  51%,
-  100% {
-    opacity: 0;
+
+  .home-metric-frame,
+  .home-metric-panel {
+    min-height: 0;
+  }
+
+  .home-metric-panel {
+    padding: 1.15rem;
+  }
+
+  .home-token-number {
+    font-size: 4.2rem;
   }
 }
 
-/* Dark mode adjustments */
-:deep(.dark) .terminal-window {
-  box-shadow:
-    0 25px 50px -12px rgba(0, 0, 0, 0.6),
-    0 0 0 1px rgba(20, 184, 166, 0.2),
-    0 0 40px rgba(20, 184, 166, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+@media (prefers-reduced-motion: reduce) {
+  .home-primary-cta,
+  .home-secondary-cta,
+  .home-login-link,
+  .home-icon-button {
+    transition: none;
+  }
 }
 </style>

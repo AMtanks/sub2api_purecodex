@@ -22,12 +22,49 @@ type UsageHandler struct {
 	apiKeyService *service.APIKeyService
 }
 
+type PublicHomeUsageStats struct {
+	WindowHours         int     `json:"window_hours"`
+	TotalTokens         int64   `json:"total_tokens"`
+	TotalActualCost     float64 `json:"total_actual_cost"`
+	TokensPerCNY        float64 `json:"tokens_per_cny"`
+	TokensPerCNYMillion float64 `json:"tokens_per_cny_million"`
+	UpdatedAt           string  `json:"updated_at"`
+}
+
 // NewUsageHandler creates a new UsageHandler
 func NewUsageHandler(usageService *service.UsageService, apiKeyService *service.APIKeyService) *UsageHandler {
 	return &UsageHandler{
 		usageService:  usageService,
 		apiKeyService: apiKeyService,
 	}
+}
+
+// PublicHomeUsage handles anonymous aggregate usage stats for the home page.
+// GET /api/v1/public/home-usage
+func (h *UsageHandler) PublicHomeUsage(c *gin.Context) {
+	const windowHours = 24
+
+	now := time.Now().UTC()
+	start := now.Add(-windowHours * time.Hour)
+	stats, err := h.usageService.GetGlobalStats(c.Request.Context(), start, now)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+
+	var tokensPerCNY float64
+	if stats.TotalActualCost > 0 {
+		tokensPerCNY = float64(stats.TotalTokens) / stats.TotalActualCost
+	}
+
+	response.Success(c, PublicHomeUsageStats{
+		WindowHours:         windowHours,
+		TotalTokens:         stats.TotalTokens,
+		TotalActualCost:     stats.TotalActualCost,
+		TokensPerCNY:        tokensPerCNY,
+		TokensPerCNYMillion: tokensPerCNY / 1_000_000,
+		UpdatedAt:           now.Format(time.RFC3339),
+	})
 }
 
 // List handles listing usage records with pagination

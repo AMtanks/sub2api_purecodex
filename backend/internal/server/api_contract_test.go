@@ -5,6 +5,7 @@ package server_test
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"math"
@@ -1193,6 +1194,53 @@ func TestAPIContracts(t *testing.T) {
 	}
 }
 
+func TestPublicHomeUsageContract(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	deps := newContractDeps(t)
+	deps.usageRepo.SetUserLogs(1, []service.UsageLog{
+		{
+			ID:           1,
+			UserID:       1,
+			InputTokens:  720000,
+			OutputTokens: 720000,
+			ActualCost:   0.2,
+			CreatedAt:    time.Now().UTC().Add(-time.Hour),
+		},
+		{
+			ID:           2,
+			UserID:       1,
+			InputTokens:  10,
+			OutputTokens: 10,
+			ActualCost:   10,
+			CreatedAt:    time.Now().UTC().Add(-25 * time.Hour),
+		},
+	})
+
+	status, body := doRequest(t, deps.router, http.MethodGet, "/api/v1/public/home-usage", "", nil)
+	require.Equal(t, http.StatusOK, status)
+
+	var resp struct {
+		Code int `json:"code"`
+		Data struct {
+			WindowHours         int     `json:"window_hours"`
+			TotalTokens         int64   `json:"total_tokens"`
+			TotalActualCost     float64 `json:"total_actual_cost"`
+			TokensPerCNY        float64 `json:"tokens_per_cny"`
+			TokensPerCNYMillion float64 `json:"tokens_per_cny_million"`
+			UpdatedAt           string  `json:"updated_at"`
+		} `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(body), &resp))
+	require.Equal(t, 0, resp.Code)
+	require.Equal(t, 24, resp.Data.WindowHours)
+	require.Equal(t, int64(1440000), resp.Data.TotalTokens)
+	require.InDelta(t, 0.2, resp.Data.TotalActualCost, 0.000001)
+	require.InDelta(t, 7200000, resp.Data.TokensPerCNY, 0.000001)
+	require.InDelta(t, 7.2, resp.Data.TokensPerCNYMillion, 0.000001)
+	_, err := time.Parse(time.RFC3339, resp.Data.UpdatedAt)
+	require.NoError(t, err)
+}
+
 type contractDeps struct {
 	now         time.Time
 	router      http.Handler
@@ -1300,6 +1348,7 @@ func newContractDeps(t *testing.T) *contractDeps {
 	v1Usage.Use(jwtAuth)
 	v1Usage.GET("/usage", usageHandler.List)
 	v1Usage.GET("/usage/stats", usageHandler.Stats)
+	v1.GET("/public/home-usage", usageHandler.PublicHomeUsage)
 
 	v1Subs := v1.Group("")
 	v1Subs.Use(jwtAuth)
@@ -2447,7 +2496,22 @@ func (r *stubUsageLogRepo) ListWithFilters(ctx context.Context, params paginatio
 }
 
 func (r *stubUsageLogRepo) GetGlobalStats(ctx context.Context, startTime, endTime time.Time) (*usagestats.UsageStats, error) {
-	return nil, errors.New("not implemented")
+	stats := &usagestats.UsageStats{}
+	for _, logs := range r.userLogs {
+		for _, log := range logs {
+			if log.CreatedAt.Before(startTime) || !log.CreatedAt.Before(endTime) {
+				continue
+			}
+			stats.TotalRequests++
+			stats.TotalInputTokens += int64(log.InputTokens)
+			stats.TotalOutputTokens += int64(log.OutputTokens)
+			stats.TotalCacheTokens += int64(log.CacheCreationTokens + log.CacheReadTokens)
+			stats.TotalCost += log.TotalCost
+			stats.TotalActualCost += log.ActualCost
+		}
+	}
+	stats.TotalTokens = stats.TotalInputTokens + stats.TotalOutputTokens + stats.TotalCacheTokens
+	return stats, nil
 }
 
 func (r *stubUsageLogRepo) GetAccountUsageStats(ctx context.Context, accountID int64, startTime, endTime time.Time) (*usagestats.AccountUsageStatsResponse, error) {

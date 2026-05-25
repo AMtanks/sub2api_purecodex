@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1.7
+#
 # =============================================================================
 # Sub2API Multi-Stage Dockerfile
 # =============================================================================
@@ -19,16 +21,21 @@ FROM ${NODE_IMAGE} AS frontend-builder
 
 WORKDIR /app/frontend
 
-# Install pnpm
-RUN corepack enable && corepack prepare pnpm@latest --activate
+ENV PNPM_HOME=/pnpm
+ENV PATH=${PNPM_HOME}:${PATH}
+
+# Install pnpm directly to avoid flaky corepack registry fetches during image builds.
+RUN npm install -g pnpm@9
 
 # Install dependencies first (better caching)
 COPY frontend/package.json frontend/pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
+RUN --mount=type=cache,id=sub2api-pnpm-store,target=/pnpm/store \
+    pnpm install --frozen-lockfile --prefer-offline
 
 # Copy frontend source and build
 COPY frontend/ ./
-RUN pnpm run build
+RUN --mount=type=cache,id=sub2api-pnpm-store,target=/pnpm/store \
+    pnpm run build
 
 # -----------------------------------------------------------------------------
 # Stage 2: Backend Builder
@@ -52,20 +59,24 @@ WORKDIR /app/backend
 
 # Copy go mod files first (better caching)
 COPY backend/go.mod backend/go.sum ./
-RUN go mod download
+RUN --mount=type=cache,id=sub2api-go-mod,target=/go/pkg/mod \
+    go mod download
 
 # Copy backend source first
 COPY backend/ ./
 
-# Copy frontend dist from previous stage (must be after backend copy to avoid being overwritten)
+# Copy the frontend bundle from Vite's configured output directory.
+# frontend/vite.config.ts writes to ../backend/internal/web/dist during build.
 COPY --from=frontend-builder /app/backend/internal/web/dist ./internal/web/dist
 
 # Build the binary (BuildType=release for CI builds, embed frontend)
-RUN CGO_ENABLED=0 GOOS=linux go build \
-    -tags embed \
-    -ldflags="-s -w -X main.Commit=${COMMIT} -X main.Date=${DATE:-$(date -u +%Y-%m-%dT%H:%M:%SZ)} -X main.BuildType=release" \
-    -o /app/sub2api \
-    ./cmd/server
+RUN --mount=type=cache,id=sub2api-go-mod,target=/go/pkg/mod \
+    --mount=type=cache,id=sub2api-go-build,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOOS=linux go build \
+        -tags embed \
+        -ldflags="-s -w -X main.Commit=${COMMIT} -X main.Date=${DATE:-$(date -u +%Y-%m-%dT%H:%M:%SZ)} -X main.BuildType=release" \
+        -o /app/sub2api \
+        ./cmd/server
 
 # -----------------------------------------------------------------------------
 # Stage 3: Final Runtime Image
@@ -81,7 +92,6 @@ LABEL org.opencontainers.image.source="https://github.com/Wei-Shaw/sub2api"
 RUN apk add --no-cache \
     ca-certificates \
     tzdata \
-    curl \
     su-exec \
     && rm -rf /var/cache/apk/*
 
@@ -92,11 +102,12 @@ RUN addgroup -g 1000 sub2api && \
 # Set working directory
 WORKDIR /app
 
-# Copy binary from builder
-COPY --from=backend-builder /app/sub2api /app/sub2api
+# Copy binary/resources with ownership to avoid extra full-layer chown copy
+COPY --from=backend-builder --chown=sub2api:sub2api /app/sub2api /app/sub2api
+COPY --from=backend-builder --chown=sub2api:sub2api /app/backend/resources /app/resources
 
 # Create data directory
-RUN mkdir -p /app/data && chown -R sub2api:sub2api /app
+RUN mkdir -p /app/data && chown sub2api:sub2api /app/data
 
 # Copy entrypoint script (fixes volume permissions then drops to sub2api)
 COPY deploy/docker-entrypoint.sh /app/docker-entrypoint.sh
