@@ -17,6 +17,8 @@ services:
     build:
       context: ..
       dockerfile: Dockerfile
+      args:
+        FRONTEND_NODE_OPTIONS: ${FRONTEND_NODE_OPTIONS:---max-old-space-size=768}
     image: sub2api:local-build
     container_name: sub2api
     restart: unless-stopped

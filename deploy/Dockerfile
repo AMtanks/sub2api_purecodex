@@ -13,6 +13,7 @@ ARG GOLANG_IMAGE=golang:1.26.3-alpine
 ARG ALPINE_IMAGE=alpine:3.20
 ARG GOPROXY=https://goproxy.cn,direct
 ARG GOSUMDB=sum.golang.google.cn
+ARG FRONTEND_NODE_OPTIONS=--max-old-space-size=768
 
 # -----------------------------------------------------------------------------
 # Stage 1: Frontend Builder
@@ -23,6 +24,8 @@ WORKDIR /app/frontend
 
 ENV PNPM_HOME=/pnpm
 ENV PATH=${PNPM_HOME}:${PATH}
+ARG FRONTEND_NODE_OPTIONS
+ENV NODE_OPTIONS=${FRONTEND_NODE_OPTIONS}
 
 # Install pnpm directly to avoid flaky corepack registry fetches during image builds.
 RUN npm install -g pnpm@9
