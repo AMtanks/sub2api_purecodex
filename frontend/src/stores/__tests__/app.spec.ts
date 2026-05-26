@@ -271,9 +271,30 @@ describe('useAppStore', () => {
       expect(store.siteLogo).toBe('/logo.png')
       expect(store.siteVersion).toBe('1.0.0')
       expect(store.publicSettingsLoaded).toBe(true)
+      expect(JSON.parse(localStorage.getItem('app-public-settings') || '{}').site_name).toBe('TestSite')
     })
 
-    it('无注入配置时返回 false', () => {
+    it('无注入配置时回退到本地持久缓存', () => {
+      localStorage.setItem('app-public-settings', JSON.stringify({
+        site_name: 'Cached Site',
+        site_logo: '/cached-logo.png',
+        version: '2.0.0',
+        contact_info: 'cached@test.com',
+        api_base_url: 'https://api.cached.test',
+        doc_url: 'https://docs.cached.test',
+      }))
+
+      const store = useAppStore()
+      const result = store.initFromInjectedConfig()
+
+      expect(result).toBe(true)
+      expect(store.siteName).toBe('Cached Site')
+      expect(store.siteLogo).toBe('/cached-logo.png')
+      expect(store.siteVersion).toBe('2.0.0')
+      expect((window as any).__APP_CONFIG__.site_name).toBe('Cached Site')
+    })
+
+    it('无注入配置且无本地缓存时返回 false', () => {
       const store = useAppStore()
       const result = store.initFromInjectedConfig()
 
@@ -293,12 +314,15 @@ describe('useAppStore', () => {
 
       expect(store.publicSettingsLoaded).toBe(false)
       expect(store.cachedPublicSettings).toBeNull()
+      expect((window as any).__APP_CONFIG__).toBeUndefined()
+      expect(localStorage.getItem('app-public-settings')).toBeNull()
     })
 
     it('fetchPublicSettings(force) 会同步更新运行时注入配置', async () => {
       vi.mocked(getPublicSettings).mockResolvedValue({
         registration_enabled: false,
         email_verify_enabled: false,
+        force_email_on_third_party_signup: false,
         registration_email_suffix_whitelist: [],
         promo_code_enabled: true,
         password_reset_enabled: false,
@@ -313,15 +337,27 @@ describe('useAppStore', () => {
         doc_url: '',
         home_content: '',
         hide_ccs_import_button: false,
-        purchase_subscription_enabled: false,
-        purchase_subscription_url: '',
+        payment_enabled: false,
+        risk_control_enabled: false,
         table_default_page_size: 1000,
         table_page_size_options: [20, 100, 1000],
         custom_menu_items: [],
         custom_endpoints: [],
         linuxdo_oauth_enabled: false,
+        wechat_oauth_enabled: false,
+        oidc_oauth_enabled: false,
+        oidc_oauth_provider_name: 'OIDC',
+        github_oauth_enabled: false,
+        google_oauth_enabled: false,
         backend_mode_enabled: false,
-        version: '1.0.0'
+        version: '1.0.0',
+        balance_low_notify_enabled: false,
+        account_quota_notify_enabled: false,
+        balance_low_notify_threshold: 0,
+        channel_monitor_enabled: true,
+        channel_monitor_default_interval_seconds: 60,
+        available_channels_enabled: false,
+        affiliate_enabled: false
       })
 
       const store = useAppStore()
@@ -329,6 +365,7 @@ describe('useAppStore', () => {
 
       expect((window as any).__APP_CONFIG__.table_default_page_size).toBe(1000)
       expect((window as any).__APP_CONFIG__.table_page_size_options).toEqual([20, 100, 1000])
+      expect(JSON.parse(localStorage.getItem('app-public-settings') || '{}').site_name).toBe('Updated Site')
       expect(localStorage.getItem('table-page-size')).toBeNull()
       expect(localStorage.getItem('table-page-size-source')).toBeNull()
     })

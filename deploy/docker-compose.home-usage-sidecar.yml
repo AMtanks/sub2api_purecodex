@@ -1,0 +1,33 @@
+services:
+  home-usage-sidecar:
+    build:
+      context: ./home-usage-sidecar
+      dockerfile: Dockerfile
+    container_name: sub2api-home-usage-sidecar
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${HOME_USAGE_SIDECAR_PORT:-18080}:8080"
+    environment:
+      - LISTEN_ADDR=:8080
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_USER=${POSTGRES_USER:-sub2api}
+      - DATABASE_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      - DATABASE_DBNAME=${POSTGRES_DB:-sub2api}
+      - DATABASE_SSLMODE=disable
+      - WINDOW_HOURS=${HOME_USAGE_WINDOW_HOURS:-12}
+      - QUERY_TIMEOUT_SECONDS=${HOME_USAGE_QUERY_TIMEOUT_SECONDS:-5}
+      - DB_MAX_OPEN_CONNS=${HOME_USAGE_DB_MAX_OPEN_CONNS:-2}
+      - DB_MAX_IDLE_CONNS=${HOME_USAGE_DB_MAX_IDLE_CONNS:-1}
+      - CORS_ALLOWED_ORIGINS=${HOME_USAGE_CORS_ALLOWED_ORIGINS:-https://purecodex.asia,https://www.purecodex.asia}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - sub2api-network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-T", "5", "-O", "/dev/null", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

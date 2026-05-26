@@ -14,6 +14,8 @@ import {
 } from '@/api/admin/system'
 import { getPublicSettings as fetchPublicSettingsAPI } from '@/api/auth'
 
+const PUBLIC_SETTINGS_STORAGE_KEY = 'app-public-settings'
+
 export const useAppStore = defineStore('app', () => {
   // ==================== State ====================
 
@@ -290,6 +292,7 @@ export const useAppStore = defineStore('app', () => {
   function applySettings(config: PublicSettings): void {
     if (typeof window !== 'undefined') {
       window.__APP_CONFIG__ = { ...config }
+      persistPublicSettings(config)
     }
     cachedPublicSettings.value = config
     siteName.value = config.site_name || 'Sub2API'
@@ -299,6 +302,33 @@ export const useAppStore = defineStore('app', () => {
     apiBaseUrl.value = config.api_base_url || ''
     docUrl.value = config.doc_url || ''
     publicSettingsLoaded.value = true
+  }
+
+  function persistPublicSettings(config: PublicSettings): void {
+    try {
+      localStorage.setItem(PUBLIC_SETTINGS_STORAGE_KEY, JSON.stringify(config))
+    } catch (error) {
+      console.warn('Failed to persist public settings cache:', error)
+    }
+  }
+
+  function readPersistedPublicSettings(): PublicSettings | null {
+    try {
+      const raw = localStorage.getItem(PUBLIC_SETTINGS_STORAGE_KEY)
+      if (!raw) return null
+
+      const parsed = JSON.parse(raw)
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        localStorage.removeItem(PUBLIC_SETTINGS_STORAGE_KEY)
+        return null
+      }
+
+      return parsed as PublicSettings
+    } catch (error) {
+      console.warn('Failed to read public settings cache:', error)
+      localStorage.removeItem(PUBLIC_SETTINGS_STORAGE_KEY)
+      return null
+    }
   }
 
   /**
@@ -386,18 +416,29 @@ export const useAppStore = defineStore('app', () => {
   function clearPublicSettingsCache(): void {
     publicSettingsLoaded.value = false
     cachedPublicSettings.value = null
+    if (typeof window !== 'undefined') {
+      delete window.__APP_CONFIG__
+      localStorage.removeItem(PUBLIC_SETTINGS_STORAGE_KEY)
+    }
   }
 
   /**
-   * Initialize settings from injected config (window.__APP_CONFIG__)
-   * This is called synchronously before Vue app mounts to prevent flash
-   * @returns true if config was found and applied, false otherwise
+   * Initialize settings from injected config or persisted cache.
+   * This is called synchronously before Vue app mounts to prevent flash.
+   * @returns true if bootstrap config was found and applied, false otherwise
    */
   function initFromInjectedConfig(): boolean {
     if (window.__APP_CONFIG__) {
       applySettings(window.__APP_CONFIG__)
       return true
     }
+
+    const persistedSettings = readPersistedPublicSettings()
+    if (persistedSettings) {
+      applySettings(persistedSettings)
+      return true
+    }
+
     return false
   }
 
