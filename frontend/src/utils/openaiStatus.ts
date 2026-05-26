@@ -54,9 +54,27 @@ export interface OpenAIStatusGroupedComponents {
   components: NonNullable<OpenAIStatusSummary['components']>
 }
 
+export interface OpenAIStatusGroupSnapshot {
+  groupId: string
+  status: string
+  sampledAt: number
+}
+
+export interface OpenAIStatusHistoryEntry {
+  sampledAt: number
+  groups: Record<string, string>
+}
+
+export interface OpenAIStatusGroupAggregate extends OpenAIStatusGroupedComponents {
+  worstStatus: string
+}
+
 export const OFFICIAL_STATUS_MENU_TITLE = '官渠状态'
 export const OPENAI_STATUS_PAGE_HOST = 'status.openai.com'
 export const OPENAI_STATUS_SUMMARY_URL = `https://${OPENAI_STATUS_PAGE_HOST}/api/v2/summary.json`
+export const OPENAI_STATUS_HISTORY_STORAGE_KEY = 'openai-status-history-v1'
+export const OPENAI_STATUS_HISTORY_INTERVAL_MS = 5 * 60 * 1000
+export const OPENAI_STATUS_HISTORY_MAX_ENTRIES = 288
 
 export const OPENAI_STATUS_COMPONENT_GROUPS: OpenAIStatusComponentGroup[] = [
   {
@@ -180,4 +198,103 @@ export function groupOpenAIComponents(summary: OpenAIStatusSummary | null): Open
   }
 
   return groups
+}
+
+const STATUS_SEVERITY: Record<string, number> = {
+  operational: 0,
+  none: 0,
+  degraded_performance: 1,
+  minor: 1,
+  under_maintenance: 2,
+  partial_outage: 2,
+  major: 2,
+  major_outage: 3,
+  critical: 3,
+}
+
+export function getWorstStatus(statuses: string[]): string {
+  if (statuses.length === 0) return 'operational'
+  return statuses.reduce((worst, current) => {
+    const worstSeverity = STATUS_SEVERITY[worst] ?? 99
+    const currentSeverity = STATUS_SEVERITY[current] ?? 99
+    return currentSeverity > worstSeverity ? current : worst
+  }, statuses[0] ?? 'operational')
+}
+
+export function aggregateOpenAIStatusGroups(summary: OpenAIStatusSummary | null): OpenAIStatusGroupAggregate[] {
+  return groupOpenAIComponents(summary).map((group) => ({
+    ...group,
+    worstStatus: getWorstStatus(group.components.map((component) => component.status)),
+  }))
+}
+
+export function readOpenAIStatusHistory(storage?: Storage): OpenAIStatusHistoryEntry[] {
+  if (!storage) return []
+  try {
+    const raw = storage.getItem(OPENAI_STATUS_HISTORY_STORAGE_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw) as unknown
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter((entry): entry is OpenAIStatusHistoryEntry => {
+      return typeof entry === 'object'
+        && entry !== null
+        && typeof (entry as OpenAIStatusHistoryEntry).sampledAt === 'number'
+        && typeof (entry as OpenAIStatusHistoryEntry).groups === 'object'
+        && (entry as OpenAIStatusHistoryEntry).groups !== null
+    })
+  } catch {
+    return []
+  }
+}
+
+export function writeOpenAIStatusHistory(entries: OpenAIStatusHistoryEntry[], storage?: Storage) {
+  if (!storage) return
+  storage.setItem(OPENAI_STATUS_HISTORY_STORAGE_KEY, JSON.stringify(entries))
+}
+
+export function appendOpenAIStatusHistory(
+  summary: OpenAIStatusSummary | null,
+  now = Date.now(),
+  storage?: Storage,
+): OpenAIStatusHistoryEntry[] {
+  const history = readOpenAIStatusHistory(storage)
+  const aggregated = aggregateOpenAIStatusGroups(summary)
+  if (aggregated.length === 0) return history
+
+  const latest = history[history.length - 1]
+  if (latest && now - latest.sampledAt < OPENAI_STATUS_HISTORY_INTERVAL_MS) {
+    return history
+  }
+
+  const nextEntry: OpenAIStatusHistoryEntry = {
+    sampledAt: now,
+    groups: Object.fromEntries(
+      aggregated.map((group) => [group.id, group.worstStatus]),
+    ),
+  }
+
+  const nextHistory = [...history, nextEntry].slice(-OPENAI_STATUS_HISTORY_MAX_ENTRIES)
+  writeOpenAIStatusHistory(nextHistory, storage)
+  return nextHistory
+}
+
+export function computeOpenAIGroupUptime(
+  history: OpenAIStatusHistoryEntry[],
+  groupId: string,
+): number | null {
+  const samples = history.filter((entry) => typeof entry.groups[groupId] === 'string')
+  if (samples.length === 0) return null
+  const operational = samples.filter((entry) => entry.groups[groupId] === 'operational').length
+  return (operational / samples.length) * 100
+}
+
+export function getOpenAIGroupHistoryStatuses(
+  history: OpenAIStatusHistoryEntry[],
+  groupId: string,
+  limit = 60,
+): string[] {
+  return history
+    .map((entry) => entry.groups[groupId])
+    .filter((status): status is string => typeof status === 'string')
+    .slice(-limit)
 }

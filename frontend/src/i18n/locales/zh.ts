@@ -6582,6 +6582,7 @@ export default {
       loadFailedDesc: '当前无法从 OpenAI 官方状态接口获取数据，请稍后重试。',
       autoRefreshHint: '页面每 60 秒自动刷新一次。',
       serviceCount: '共 {count} 个服务',
+      groupCount: '共 {count} 个分组',
       groupComponentCount: '{count} 个组件',
       groupOperational: '全部正常',
       groupIssueCount: '{count} 个组件异常',
@@ -6590,6 +6591,7 @@ export default {
       noIssues: 'We’re not aware of any issues affecting our systems.',
       degradedSummary: '当前有 {services} 个组件处于非正常状态。',
       activeIncidentSummary: '当前有 {incidents} 个活动事件，涉及 {services} 个非正常组件。',
+      samplingHint: '历史 uptime 基于当前浏览器每 5 分钟一次本地采样缓存。',
       impactUnknown: '影响范围待确认',
       impact: {
         none: '无明显影响',

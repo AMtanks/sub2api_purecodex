@@ -6425,6 +6425,7 @@ export default {
       loadFailedDesc: 'Unable to fetch data from the OpenAI public status API right now. Please try again later.',
       autoRefreshHint: 'Auto-refreshes every 60 seconds.',
       serviceCount: '{count} services total',
+      groupCount: '{count} groups total',
       groupComponentCount: '{count} components',
       groupOperational: 'All operational',
       groupIssueCount: '{count} components affected',
@@ -6433,6 +6434,7 @@ export default {
       noIssues: 'We’re not aware of any issues affecting our systems.',
       degradedSummary: '{services} components are currently reporting non-operational states.',
       activeIncidentSummary: '{incidents} active incidents are affecting {services} non-operational components.',
+      samplingHint: 'Historical uptime is based on five-minute local browser cache samples.',
       impactUnknown: 'Impact not specified',
       impact: {
         none: 'No visible impact',

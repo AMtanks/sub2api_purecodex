@@ -139,10 +139,10 @@
               <div class="official-status-panel-head">
                 <div>
                   <h3>{{ t('customPage.officialStatus.servicesSection') }}</h3>
-                  <p>{{ t('customPage.officialStatus.componentBarsHint') }}</p>
+                  <p>{{ t('customPage.officialStatus.samplingHint') }}</p>
                 </div>
                 <span class="official-status-section-count">
-                  {{ t('customPage.officialStatus.serviceCount', { count: totalOfficialComponentCount }) }}
+                  {{ t('customPage.officialStatus.groupCount', { count: groupedOfficialComponents.length }) }}
                 </span>
               </div>
 
@@ -154,31 +154,29 @@
                 >
                   <div class="official-group-topline">
                     <div class="official-group-meta">
-                      <span class="official-group-icon" :class="groupStatusClass(group.components)">
+                      <span class="official-group-icon" :class="componentStatusClass(group.worstStatus)">
                         <Icon name="check" size="xs" :stroke-width="2.6" />
                       </span>
                       <div class="official-group-title-row">
                         <h4>{{ group.name }}</h4>
-                        <span class="official-group-components">
-                          {{ t('customPage.officialStatus.groupComponentCount', { count: group.components.length }) }}
-                        </span>
                         <span v-if="group.description" class="official-group-description">
                           {{ group.description }}
                         </span>
                       </div>
                     </div>
-                    <span class="official-group-summary">
-                      {{ summarizeGroupStatus(group.components) }}
-                    </span>
+                    <div class="official-group-stats">
+                      <span class="official-group-summary">{{ summarizeGroupStatus(group.components) }}</span>
+                      <span class="official-group-uptime">{{ groupUptime(group.id) }}% uptime</span>
+                    </div>
                   </div>
 
-                  <div class="official-group-pills" :aria-label="`${group.name} component status`">
+                  <div class="official-group-pills" :aria-label="`${group.name} status history`">
                     <div
-                      v-for="component in group.components"
-                      :key="component.id"
+                      v-for="(status, index) in groupHistoryStatuses(group.id)"
+                      :key="`${group.id}-${index}`"
                       class="official-group-pill"
-                      :class="componentStatusClass(component.status)"
-                      :title="`${component.name} · ${formatComponentStatus(component.status)}`"
+                      :class="componentStatusClass(status)"
+                      :title="groupHistoryTitle(status)"
                     ></div>
                   </div>
                 </article>
@@ -272,9 +270,16 @@ import AppLayout from '@/components/layout/AppLayout.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { buildEmbeddedUrl, detectTheme } from '@/utils/embedded-url'
 import {
+  appendOpenAIStatusHistory,
+  aggregateOpenAIStatusGroups,
+  computeOpenAIGroupUptime,
   fetchOpenAIStatusSummary,
-  groupOpenAIComponents,
+  getWorstStatus,
+  getOpenAIGroupHistoryStatuses,
+  OPENAI_STATUS_HISTORY_INTERVAL_MS,
+  readOpenAIStatusHistory,
   isOfficialStatusMenuItem,
+  type OpenAIStatusHistoryEntry,
   type OpenAIStatusSummary,
 } from '@/utils/openaiStatus'
 import { marked } from 'marked'
@@ -300,6 +305,7 @@ const tocItems = ref<TocItem[]>([])
 const tocVisible = ref(typeof window !== 'undefined' ? window.innerWidth > 768 : true)
 const activeHeadingId = ref('')
 const officialStatusSummary = ref<OpenAIStatusSummary | null>(null)
+const officialStatusHistory = ref<OpenAIStatusHistoryEntry[]>([])
 const officialStatusLoading = ref(false)
 const officialStatusError = ref('')
 let themeObserver: MutationObserver | null = null
@@ -347,27 +353,14 @@ const isValidUrl = computed(() => {
   return url.startsWith('http://') || url.startsWith('https://')
 })
 
-const sortedComponents = computed(() => {
-  const components = officialStatusSummary.value?.components ?? []
-  return [...components].sort((a, b) => {
-    const aOperational = a.status === 'operational' ? 1 : 0
-    const bOperational = b.status === 'operational' ? 1 : 0
-    if (aOperational !== bOperational) return aOperational - bOperational
-    return (a.position ?? 0) - (b.position ?? 0)
-  })
-})
-
 const activeIncidents = computed(() =>
   (officialStatusSummary.value?.incidents ?? []).filter((incident) => incident.status !== 'resolved')
 )
 
 const activeIncidentCount = computed(() => activeIncidents.value.length)
+const groupedOfficialComponents = computed(() => aggregateOpenAIStatusGroups(officialStatusSummary.value))
 const nonOperationalComponentCount = computed(() =>
-  sortedComponents.value.filter((component) => component.status !== 'operational').length
-)
-const groupedOfficialComponents = computed(() => groupOpenAIComponents(officialStatusSummary.value))
-const totalOfficialComponentCount = computed(() =>
-  groupedOfficialComponents.value.reduce((sum, group) => sum + group.components.length, 0)
+  groupedOfficialComponents.value.filter((group) => group.worstStatus !== 'operational').length
 )
 
 const formattedOfficialStatusUpdatedAt = computed(() => {
@@ -506,6 +499,11 @@ async function refreshOfficialStatus() {
 
   try {
     officialStatusSummary.value = await fetchOpenAIStatusSummary(officialStatusAbortController.signal)
+    officialStatusHistory.value = appendOpenAIStatusHistory(
+      officialStatusSummary.value,
+      Date.now(),
+      typeof window !== 'undefined' ? window.localStorage : undefined,
+    )
   } catch (error) {
     if ((error as Error).name === 'AbortError') return
     officialStatusError.value = t('customPage.officialStatus.loadFailedDesc')
@@ -519,7 +517,7 @@ function ensureOfficialStatusRefresh() {
   if (!isOfficialStatusPage.value || typeof window === 'undefined') return
   officialStatusRefreshTimer = window.setInterval(() => {
     void refreshOfficialStatus()
-  }, 60_000)
+  }, OPENAI_STATUS_HISTORY_INTERVAL_MS)
 }
 
 function formatDateTime(value?: string): string {
@@ -558,20 +556,32 @@ function componentStatusClass(status: string): string {
   return statusIndicatorClass(status)
 }
 
-function groupStatusClass(components: Array<{ status: string }>): string {
-  if (components.some((component) => component.status === 'major_outage')) {
-    return 'official-status-chip-critical'
-  }
-  if (components.some((component) => component.status !== 'operational')) {
-    return 'official-status-chip-warn'
-  }
-  return 'official-status-chip-ok'
+function summarizeGroupStatus(components: Array<{ status: string }>): string {
+  const worstStatus = aggregateGroupWorstStatus(components)
+  return formatComponentStatus(worstStatus)
 }
 
-function summarizeGroupStatus(components: Array<{ status: string }>): string {
-  const issueCount = components.filter((component) => component.status !== 'operational').length
-  if (issueCount === 0) return t('customPage.officialStatus.groupOperational')
-  return t('customPage.officialStatus.groupIssueCount', { count: issueCount })
+function aggregateGroupWorstStatus(components: Array<{ status: string }>): string {
+  return getWorstStatus(components.map((component) => component.status))
+}
+
+function groupUptime(groupId: string): string {
+  const uptime = computeOpenAIGroupUptime(officialStatusHistory.value, groupId)
+  if (uptime === null) return '--'
+  return uptime.toFixed(2)
+}
+
+function groupHistoryStatuses(groupId: string): string[] {
+  const statuses = getOpenAIGroupHistoryStatuses(officialStatusHistory.value, groupId, 60)
+  const padCount = Math.max(0, 60 - statuses.length)
+  return [
+    ...Array.from({ length: padCount }, () => 'empty'),
+    ...statuses,
+  ]
+}
+
+function groupHistoryTitle(status: string): string {
+  return formatComponentStatus(status)
 }
 
 function statusIndicatorClass(indicator?: string): string {
@@ -668,6 +678,7 @@ watch(markdownSlug, (slug) => {
 watch(isOfficialStatusPage, (enabled) => {
   if (!enabled) {
     officialStatusSummary.value = null
+    officialStatusHistory.value = []
     officialStatusError.value = ''
     stopOfficialStatusFetch()
     clearOfficialStatusTimer()
@@ -679,6 +690,9 @@ watch(isOfficialStatusPage, (enabled) => {
 
 onMounted(async () => {
   pageTheme.value = detectTheme()
+  if (typeof window !== 'undefined') {
+    officialStatusHistory.value = readOpenAIStatusHistory(window.localStorage)
+  }
 
   if (typeof document !== 'undefined') {
     themeObserver = new MutationObserver(() => {
@@ -947,6 +961,14 @@ onUnmounted(() => {
 .official-group-description,
 .official-group-summary {
   @apply text-sm text-gray-400 dark:text-dark-400;
+}
+
+.official-group-stats {
+  @apply flex flex-col items-end gap-1;
+}
+
+.official-group-uptime {
+  @apply text-[1.05rem] font-medium text-gray-500 dark:text-dark-300;
 }
 
 .official-group-pills {
