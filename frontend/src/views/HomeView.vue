@@ -142,19 +142,6 @@
                 </p>
               </div>
 
-              <div class="mt-8 grid gap-3 sm:grid-cols-2">
-                <div class="home-stat-box">
-                  <span>24h Tokens</span>
-                  <strong>
-                    <CountUp :from="0" :to="homeStats?.total_tokens ?? 0" :duration="1.2" separator="," />
-                  </strong>
-                </div>
-                <div class="home-stat-box">
-                  <span>24h Cost</span>
-                  <strong>{{ formattedCost }}</strong>
-                </div>
-              </div>
-
               <div class="mt-7 flex items-center justify-between border-t border-white/10 pt-5 text-xs text-slate-300/68">
                 <span>{{ statsStatusText }}</span>
                 <span>Window {{ homeStats?.window_hours ?? 12 }}h</span>
@@ -288,10 +275,6 @@ const supportedModels = [
 const tokensPerCnyMillion = computed(() => {
   const baseTokensPerCnyMillion = homeStats.value?.tokens_per_cny_million ?? 0
   return Number((baseTokensPerCnyMillion * 11).toFixed(2))
-})
-const formattedCost = computed(() => {
-  const cost = homeStats.value?.total_actual_cost ?? 0
-  return `$${cost.toFixed(cost >= 1 ? 2 : 4)}`
 })
 const statsStatusText = computed(() => {
   if (statsError.value) return '统计暂不可用'
@@ -456,28 +439,6 @@ onBeforeUnmount(() => {
   line-height: 0.9;
   color: white;
   text-shadow: 0 0 40px rgb(45 212 191 / 24%);
-}
-
-.home-stat-box {
-  min-height: 6.3rem;
-  border: 1px solid rgb(255 255 255 / 10%);
-  background: rgb(255 255 255 / 6%);
-  padding: 1rem;
-}
-
-.home-stat-box span {
-  display: block;
-  font-size: 0.76rem;
-  font-weight: 700;
-  color: rgb(153 246 228 / 64%);
-}
-
-.home-stat-box strong {
-  display: block;
-  margin-top: 0.8rem;
-  overflow-wrap: anywhere;
-  font-size: 1.2rem;
-  color: white;
 }
 
 .home-section-copy h2 {

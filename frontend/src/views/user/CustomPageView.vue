@@ -166,7 +166,7 @@
                     </div>
                     <div class="official-group-stats">
                       <span class="official-group-summary">{{ summarizeGroupStatus(group.components) }}</span>
-                      <span class="official-group-uptime">{{ groupUptime(group.id) }}% uptime</span>
+                      <span class="official-group-uptime" :class="uptimeClass(group.id)">{{ groupUptime(group.id) }}% uptime</span>
                     </div>
                   </div>
 
@@ -175,7 +175,7 @@
                       v-for="(status, index) in groupHistoryStatuses(group.id)"
                       :key="`${group.id}-${index}`"
                       class="official-group-pill"
-                      :class="componentStatusClass(status)"
+                      :class="historyBarClass(status)"
                       :title="groupHistoryTitle(status)"
                     ></div>
                   </div>
@@ -277,6 +277,7 @@ import {
   getWorstStatus,
   getOpenAIGroupHistoryStatuses,
   OPENAI_STATUS_HISTORY_INTERVAL_MS,
+  OPENAI_STATUS_HISTORY_MAX_ENTRIES,
   readOpenAIStatusHistory,
   isOfficialStatusMenuItem,
   type OpenAIStatusHistoryEntry,
@@ -566,14 +567,19 @@ function aggregateGroupWorstStatus(components: Array<{ status: string }>): strin
 }
 
 function groupUptime(groupId: string): string {
-  const uptime = computeOpenAIGroupUptime(officialStatusHistory.value, groupId)
+  const visibleHistory = officialStatusHistory.value.slice(-OPENAI_STATUS_HISTORY_MAX_ENTRIES)
+  const uptime = computeOpenAIGroupUptime(visibleHistory, groupId)
   if (uptime === null) return '--'
   return uptime.toFixed(2)
 }
 
 function groupHistoryStatuses(groupId: string): string[] {
-  const statuses = getOpenAIGroupHistoryStatuses(officialStatusHistory.value, groupId, 60)
-  const padCount = Math.max(0, 60 - statuses.length)
+  const statuses = getOpenAIGroupHistoryStatuses(
+    officialStatusHistory.value,
+    groupId,
+    OPENAI_STATUS_HISTORY_MAX_ENTRIES,
+  )
+  const padCount = Math.max(0, OPENAI_STATUS_HISTORY_MAX_ENTRIES - statuses.length)
   return [
     ...Array.from({ length: padCount }, () => 'empty'),
     ...statuses,
@@ -582,6 +588,37 @@ function groupHistoryStatuses(groupId: string): string[] {
 
 function groupHistoryTitle(status: string): string {
   return formatComponentStatus(status)
+}
+
+function historyBarClass(status: string): string {
+  switch (status) {
+    case 'operational':
+    case 'none':
+      return 'official-history-bar-ok'
+    case 'minor':
+    case 'degraded_performance':
+      return 'official-history-bar-warn'
+    case 'major':
+    case 'partial_outage':
+    case 'under_maintenance':
+      return 'official-history-bar-issue'
+    case 'critical':
+    case 'major_outage':
+      return 'official-history-bar-critical'
+    default:
+      return 'official-history-bar-empty'
+  }
+}
+
+function uptimeClass(groupId: string): string {
+  const uptime = computeOpenAIGroupUptime(
+    officialStatusHistory.value.slice(-OPENAI_STATUS_HISTORY_MAX_ENTRIES),
+    groupId,
+  )
+  if (uptime === null) return 'official-uptime-empty'
+  if (uptime >= 99.9) return 'official-uptime-ok'
+  if (uptime >= 99) return 'official-uptime-warn'
+  return 'official-uptime-critical'
 }
 
 function statusIndicatorClass(indicator?: string): string {
@@ -971,12 +1008,48 @@ onUnmounted(() => {
   @apply text-[1.05rem] font-medium text-gray-500 dark:text-dark-300;
 }
 
+.official-uptime-ok {
+  @apply text-emerald-500 dark:text-emerald-400;
+}
+
+.official-uptime-warn {
+  @apply text-amber-500 dark:text-amber-400;
+}
+
+.official-uptime-critical {
+  @apply text-red-500 dark:text-red-400;
+}
+
+.official-uptime-empty {
+  @apply text-gray-500 dark:text-dark-300;
+}
+
 .official-group-pills {
   @apply mt-4 flex flex-wrap gap-[4px];
 }
 
 .official-group-pill {
   @apply h-6 w-[7px] rounded-[2px];
+}
+
+.official-history-bar-ok {
+  @apply bg-emerald-500;
+}
+
+.official-history-bar-warn {
+  @apply bg-amber-500;
+}
+
+.official-history-bar-issue {
+  @apply bg-orange-500;
+}
+
+.official-history-bar-critical {
+  @apply bg-red-500;
+}
+
+.official-history-bar-empty {
+  @apply bg-gray-600 dark:bg-dark-600;
 }
 
 .official-incident-list {

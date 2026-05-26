@@ -6591,7 +6591,7 @@ export default {
       noIssues: 'We’re not aware of any issues affecting our systems.',
       degradedSummary: '当前有 {services} 个组件处于非正常状态。',
       activeIncidentSummary: '当前有 {incidents} 个活动事件，涉及 {services} 个非正常组件。',
-      samplingHint: '历史 uptime 基于当前浏览器每 5 分钟一次本地采样缓存。',
+      samplingHint: '历史 uptime 根据每 5 分钟一次官方接口采样。',
       impactUnknown: '影响范围待确认',
       impact: {
         none: '无明显影响',

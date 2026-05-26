@@ -6434,7 +6434,7 @@ export default {
       noIssues: 'We’re not aware of any issues affecting our systems.',
       degradedSummary: '{services} components are currently reporting non-operational states.',
       activeIncidentSummary: '{incidents} active incidents are affecting {services} non-operational components.',
-      samplingHint: 'Historical uptime is based on five-minute local browser cache samples.',
+      samplingHint: 'Historical uptime is derived from official API samples collected every 5 minutes.',
       impactUnknown: 'Impact not specified',
       impact: {
         none: 'No visible impact',
