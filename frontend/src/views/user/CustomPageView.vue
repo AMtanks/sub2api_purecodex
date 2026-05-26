@@ -77,11 +77,10 @@
         </div>
 
         <div v-else-if="isOfficialStatusPage" class="official-status-shell">
-          <div class="official-status-header">
-            <div>
-              <p class="official-status-eyebrow">{{ t('customPage.officialStatus.eyebrow') }}</p>
-              <h2 class="official-status-title">{{ t('customPage.officialStatus.title') }}</h2>
-              <p class="official-status-subtitle">{{ t('customPage.officialStatus.subtitle') }}</p>
+          <div class="official-status-page-head">
+            <div class="official-status-brand">
+              <span class="official-status-brand-mark">OpenAI</span>
+              <p class="official-status-brand-caption">{{ t('customPage.officialStatus.subtitle') }}</p>
             </div>
             <div class="official-status-actions">
               <button
@@ -97,9 +96,8 @@
                 :href="menuItem?.url || 'https://status.openai.com/'"
                 target="_blank"
                 rel="noopener noreferrer"
-                class="btn btn-secondary btn-sm"
+                class="official-status-primary-link"
               >
-                <Icon name="externalLink" size="sm" class="mr-1.5" :stroke-width="2" />
                 {{ t('customPage.openInNewTab') }}
               </a>
             </div>
@@ -120,39 +118,79 @@
           </div>
 
           <div v-else-if="officialStatusSummary" class="official-status-content">
-            <div class="official-status-summary-grid">
-              <div class="official-status-summary-card official-status-summary-card-primary">
-                <span class="official-status-card-label">{{ t('customPage.officialStatus.overallStatus') }}</span>
-                <div class="official-status-card-main">
-                  <span class="official-status-badge" :class="officialStatusBadgeClass">
-                    {{ officialStatusSummary.status.description }}
+            <div class="official-status-banner" :class="officialStatusBannerClass">
+              <div class="official-status-banner-head">
+                <div class="official-status-banner-title">
+                  <span class="official-status-banner-icon" :class="officialStatusBadgeClass">
+                    <Icon name="check" size="sm" :stroke-width="2.4" />
                   </span>
+                  <strong>{{ overallStatusHeadline }}</strong>
                 </div>
-                <p class="official-status-card-footnote">
+                <span class="official-status-banner-meta">
                   {{ t('customPage.officialStatus.lastUpdated', { time: formattedOfficialStatusUpdatedAt }) }}
-                </p>
+                </span>
               </div>
-
-              <div class="official-status-summary-card">
-                <span class="official-status-card-label">{{ t('customPage.officialStatus.activeIncidents') }}</span>
-                <div class="official-status-card-main">
-                  <span class="official-status-card-value">{{ activeIncidentCount }}</span>
-                </div>
-                <p class="official-status-card-footnote">{{ t('customPage.officialStatus.autoRefreshHint') }}</p>
-              </div>
-
-              <div class="official-status-summary-card">
-                <span class="official-status-card-label">{{ t('customPage.officialStatus.affectedServices') }}</span>
-                <div class="official-status-card-main">
-                  <span class="official-status-card-value">{{ nonOperationalComponentCount }}</span>
-                </div>
-                <p class="official-status-card-footnote">{{ t('customPage.officialStatus.serviceCount', { count: sortedComponents.length }) }}</p>
+              <div class="official-status-banner-body">
+                {{ overallStatusBody }}
               </div>
             </div>
 
-            <div v-if="activeIncidents.length > 0" class="official-status-section">
-              <div class="official-status-section-header">
-                <h3>{{ t('customPage.officialStatus.activeIncidentsSection') }}</h3>
+            <div class="official-status-panel">
+              <div class="official-status-panel-head">
+                <div>
+                  <h3>{{ t('customPage.officialStatus.servicesSection') }}</h3>
+                  <p>{{ t('customPage.officialStatus.componentBarsHint') }}</p>
+                </div>
+                <span class="official-status-section-count">
+                  {{ t('customPage.officialStatus.serviceCount', { count: totalOfficialComponentCount }) }}
+                </span>
+              </div>
+
+              <div class="official-group-list">
+                <article
+                  v-for="group in groupedOfficialComponents"
+                  :key="group.id"
+                  class="official-group-row"
+                >
+                  <div class="official-group-topline">
+                    <div class="official-group-meta">
+                      <span class="official-group-icon" :class="groupStatusClass(group.components)">
+                        <Icon name="check" size="xs" :stroke-width="2.6" />
+                      </span>
+                      <div class="official-group-title-row">
+                        <h4>{{ group.name }}</h4>
+                        <span class="official-group-components">
+                          {{ t('customPage.officialStatus.groupComponentCount', { count: group.components.length }) }}
+                        </span>
+                        <span v-if="group.description" class="official-group-description">
+                          {{ group.description }}
+                        </span>
+                      </div>
+                    </div>
+                    <span class="official-group-summary">
+                      {{ summarizeGroupStatus(group.components) }}
+                    </span>
+                  </div>
+
+                  <div class="official-group-pills" :aria-label="`${group.name} component status`">
+                    <div
+                      v-for="component in group.components"
+                      :key="component.id"
+                      class="official-group-pill"
+                      :class="componentStatusClass(component.status)"
+                      :title="`${component.name} · ${formatComponentStatus(component.status)}`"
+                    ></div>
+                  </div>
+                </article>
+              </div>
+            </div>
+
+            <div v-if="activeIncidents.length > 0" class="official-status-panel">
+              <div class="official-status-panel-head">
+                <div>
+                  <h3>{{ t('customPage.officialStatus.activeIncidentsSection') }}</h3>
+                  <p>{{ t('customPage.officialStatus.activeIncidentsHint') }}</p>
+                </div>
                 <span class="official-status-section-count">{{ activeIncidents.length }}</span>
               </div>
               <div class="official-incident-list">
@@ -178,30 +216,6 @@
                   >
                     {{ t('customPage.officialStatus.viewIncident') }}
                   </a>
-                </article>
-              </div>
-            </div>
-
-            <div class="official-status-section">
-              <div class="official-status-section-header">
-                <h3>{{ t('customPage.officialStatus.servicesSection') }}</h3>
-                <span class="official-status-section-count">{{ sortedComponents.length }}</span>
-              </div>
-              <div class="official-service-grid">
-                <article
-                  v-for="component in sortedComponents"
-                  :key="component.id"
-                  class="official-service-card"
-                >
-                  <div class="official-service-card-topline">
-                    <h4>{{ component.name }}</h4>
-                    <span
-                      class="official-status-chip"
-                      :class="componentStatusClass(component.status)"
-                    >
-                      {{ formatComponentStatus(component.status) }}
-                    </span>
-                  </div>
                 </article>
               </div>
             </div>
@@ -259,6 +273,7 @@ import Icon from '@/components/icons/Icon.vue'
 import { buildEmbeddedUrl, detectTheme } from '@/utils/embedded-url'
 import {
   fetchOpenAIStatusSummary,
+  groupOpenAIComponents,
   isOfficialStatusMenuItem,
   type OpenAIStatusSummary,
 } from '@/utils/openaiStatus'
@@ -350,6 +365,10 @@ const activeIncidentCount = computed(() => activeIncidents.value.length)
 const nonOperationalComponentCount = computed(() =>
   sortedComponents.value.filter((component) => component.status !== 'operational').length
 )
+const groupedOfficialComponents = computed(() => groupOpenAIComponents(officialStatusSummary.value))
+const totalOfficialComponentCount = computed(() =>
+  groupedOfficialComponents.value.reduce((sum, group) => sum + group.components.length, 0)
+)
 
 const formattedOfficialStatusUpdatedAt = computed(() => {
   const updatedAt = officialStatusSummary.value?.page.updated_at
@@ -358,6 +377,31 @@ const formattedOfficialStatusUpdatedAt = computed(() => {
 })
 
 const officialStatusBadgeClass = computed(() => statusIndicatorClass(officialStatusSummary.value?.status.indicator))
+const officialStatusBannerClass = computed(() => {
+  return nonOperationalComponentCount.value === 0 && activeIncidentCount.value === 0
+    ? 'official-status-banner-operational'
+    : 'official-status-banner-degraded'
+})
+const overallStatusHeadline = computed(() => {
+  if (nonOperationalComponentCount.value === 0 && activeIncidentCount.value === 0) {
+    return t('customPage.officialStatus.fullyOperational')
+  }
+  return officialStatusSummary.value?.status.description || t('customPage.officialStatus.degradedHeadline')
+})
+const overallStatusBody = computed(() => {
+  if (activeIncidentCount.value > 0) {
+    return t('customPage.officialStatus.activeIncidentSummary', {
+      incidents: activeIncidentCount.value,
+      services: nonOperationalComponentCount.value,
+    })
+  }
+  if (nonOperationalComponentCount.value > 0) {
+    return t('customPage.officialStatus.degradedSummary', {
+      services: nonOperationalComponentCount.value,
+    })
+  }
+  return t('customPage.officialStatus.noIssues')
+})
 
 function generateHeadingId(text: string, index: number): string {
   const base = text
@@ -512,6 +556,22 @@ function formatIncidentImpact(impact?: string): string {
 
 function componentStatusClass(status: string): string {
   return statusIndicatorClass(status)
+}
+
+function groupStatusClass(components: Array<{ status: string }>): string {
+  if (components.some((component) => component.status === 'major_outage')) {
+    return 'official-status-chip-critical'
+  }
+  if (components.some((component) => component.status !== 'operational')) {
+    return 'official-status-chip-warn'
+  }
+  return 'official-status-chip-ok'
+}
+
+function summarizeGroupStatus(components: Array<{ status: string }>): string {
+  const issueCount = components.filter((component) => component.status !== 'operational').length
+  if (issueCount === 0) return t('customPage.officialStatus.groupOperational')
+  return t('customPage.officialStatus.groupIssueCount', { count: issueCount })
 }
 
 function statusIndicatorClass(indicator?: string): string {
@@ -737,64 +797,72 @@ onUnmounted(() => {
 }
 
 .official-status-shell {
-  @apply flex h-full flex-col gap-6 overflow-auto p-5 md:p-6;
-  @apply bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.08),_transparent_35%),linear-gradient(180deg,_rgba(248,250,252,1),_rgba(255,255,255,1))];
-  @apply dark:bg-[radial-gradient(circle_at_top_left,_rgba(56,189,248,0.14),_transparent_30%),linear-gradient(180deg,_rgba(10,15,26,1),_rgba(6,10,18,1))];
+  @apply flex h-full flex-col gap-6 overflow-auto p-6 md:p-7;
+  @apply bg-[#fbfbf8] text-[#111827] dark:bg-[#0f1720] dark:text-white;
 }
 
-.official-status-header {
-  @apply flex flex-col gap-4 rounded-3xl border border-gray-200/80 bg-white/85 p-5 shadow-sm backdrop-blur md:flex-row md:items-start md:justify-between;
-  @apply dark:border-dark-600 dark:bg-dark-900/85;
+.official-status-page-head {
+  @apply flex flex-col gap-4 md:flex-row md:items-start md:justify-between;
 }
 
-.official-status-eyebrow {
-  @apply text-xs font-semibold uppercase tracking-[0.24em] text-sky-600 dark:text-sky-300;
+.official-status-brand-mark {
+  @apply text-[2rem] font-semibold tracking-tight text-[#111827] dark:text-white;
 }
 
-.official-status-title {
-  @apply mt-2 text-2xl font-semibold text-gray-900 dark:text-white;
-}
-
-.official-status-subtitle {
-  @apply mt-2 text-sm text-gray-600 dark:text-dark-300;
+.official-status-brand-caption {
+  @apply mt-2 text-sm text-gray-500 dark:text-dark-300;
 }
 
 .official-status-actions {
   @apply flex flex-wrap items-center gap-2;
 }
 
+.official-status-primary-link {
+  @apply inline-flex items-center rounded-xl bg-[#2d2d34] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#1f1f25];
+}
+
 .official-status-content {
   @apply flex flex-col gap-6;
 }
 
-.official-status-summary-grid {
-  @apply grid gap-4 md:grid-cols-3;
+.official-status-banner {
+  @apply overflow-hidden rounded-2xl border shadow-sm;
 }
 
-.official-status-summary-card {
-  @apply rounded-3xl border border-gray-200/80 bg-white/90 p-5 shadow-sm;
-  @apply dark:border-dark-600 dark:bg-dark-900/85;
+.official-status-banner-operational {
+  @apply border-emerald-400/80 bg-white dark:bg-dark-900;
 }
 
-.official-status-summary-card-primary {
-  @apply bg-[linear-gradient(135deg,_rgba(14,165,233,0.12),_rgba(255,255,255,0.95))];
-  @apply dark:bg-[linear-gradient(135deg,_rgba(14,165,233,0.18),_rgba(15,23,42,0.92))];
+.official-status-banner-degraded {
+  @apply border-amber-400/80 bg-white dark:bg-dark-900;
 }
 
-.official-status-card-label {
-  @apply text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-dark-400;
+.official-status-banner-head {
+  @apply flex flex-col gap-3 px-6 py-5 md:flex-row md:items-center md:justify-between;
 }
 
-.official-status-card-main {
-  @apply mt-4 flex items-center gap-3;
+.official-status-banner-operational .official-status-banner-head {
+  @apply bg-emerald-100/80 dark:bg-emerald-500/15;
 }
 
-.official-status-card-value {
-  @apply text-3xl font-semibold text-gray-900 dark:text-white;
+.official-status-banner-degraded .official-status-banner-head {
+  @apply bg-amber-100/80 dark:bg-amber-500/15;
 }
 
-.official-status-card-footnote {
-  @apply mt-4 text-sm text-gray-500 dark:text-dark-400;
+.official-status-banner-title {
+  @apply flex items-center gap-3 text-2xl font-semibold text-[#111827] dark:text-white;
+}
+
+.official-status-banner-meta {
+  @apply text-sm text-gray-500 dark:text-dark-300;
+}
+
+.official-status-banner-icon {
+  @apply inline-flex h-8 w-8 items-center justify-center rounded-full;
+}
+
+.official-status-banner-body {
+  @apply px-6 py-5 text-lg text-[#111827] dark:text-dark-100;
 }
 
 .official-status-badge,
@@ -826,41 +894,79 @@ onUnmounted(() => {
   @apply bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300;
 }
 
-.official-status-section {
-  @apply rounded-3xl border border-gray-200/80 bg-white/90 p-5 shadow-sm;
-  @apply dark:border-dark-600 dark:bg-dark-900/85;
+.official-status-panel {
+  @apply overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-dark-600 dark:bg-dark-900;
 }
 
-.official-status-section-header {
-  @apply mb-4 flex items-center justify-between gap-3;
+.official-status-panel-head {
+  @apply flex flex-col gap-2 border-b border-gray-200 px-6 py-5 md:flex-row md:items-center md:justify-between dark:border-dark-700;
 }
 
-.official-status-section-header h3 {
-  @apply text-lg font-semibold text-gray-900 dark:text-white;
+.official-status-panel-head h3 {
+  @apply text-[1.8rem] font-semibold leading-none text-[#111827] dark:text-white;
+}
+
+.official-status-panel-head p {
+  @apply mt-2 text-sm text-gray-400 dark:text-dark-400;
 }
 
 .official-status-section-count {
   @apply rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600 dark:bg-dark-700 dark:text-dark-300;
 }
 
-.official-incident-list,
-.official-service-grid {
-  @apply grid gap-3 md:grid-cols-2 xl:grid-cols-3;
+.official-group-list {
+  @apply divide-y divide-gray-100 dark:divide-dark-700;
 }
 
-.official-incident-card,
-.official-service-card {
+.official-group-row {
+  @apply px-6 py-5;
+}
+
+.official-group-topline,
+.official-incident-topline {
+  @apply flex items-start justify-between gap-3;
+}
+
+.official-group-meta {
+  @apply flex min-w-0 items-start gap-3;
+}
+
+.official-group-icon {
+  @apply mt-0.5 inline-flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full;
+}
+
+.official-group-title-row {
+  @apply flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1;
+}
+
+.official-group-title-row h4 {
+  @apply text-[1.05rem] font-semibold text-[#111827] dark:text-white;
+}
+
+.official-group-components,
+.official-group-description,
+.official-group-summary {
+  @apply text-sm text-gray-400 dark:text-dark-400;
+}
+
+.official-group-pills {
+  @apply mt-4 flex flex-wrap gap-[4px];
+}
+
+.official-group-pill {
+  @apply h-6 w-[7px] rounded-[2px];
+}
+
+.official-incident-list {
+  @apply grid gap-3 p-4 md:grid-cols-2;
+}
+
+.official-incident-card {
   @apply rounded-2xl border border-gray-200/80 bg-gray-50/80 p-4;
   @apply dark:border-dark-600 dark:bg-dark-800/75;
 }
 
-.official-incident-topline,
-.official-service-card-topline {
-  @apply flex items-start justify-between gap-3;
-}
-
-.official-incident-topline h4,
-.official-service-card-topline h4 {
+.official-incident-topline h4 {
   @apply text-sm font-semibold text-gray-900 dark:text-white;
 }
 
