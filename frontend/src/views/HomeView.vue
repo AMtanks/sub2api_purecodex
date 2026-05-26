@@ -66,12 +66,12 @@
           <h1 class="home-title">
             <span class="block">{{ siteName }}</span>
             <ShinyText
-              text="便宜、高缓、"
+              text="便宜、高缓"
               color="#d8fff9"
               shine-color="#ffffff"
               :speed="2.8"
               :spread="115"
-              class-name="block text-teal-100"
+              class-name="block text-teal-95"
             />
           </h1>
           <p class="mt-7 max-w-2xl text-lg leading-9 text-slate-200/78 md:text-xl">
@@ -424,12 +424,7 @@ onBeforeUnmount(() => {
   color: rgb(203 213 225 / 74%);
 }
 
-.home-metric-frame {
-  min-height: 520px;
-}
-
 .home-metric-panel {
-  min-height: 520px;
   padding: 1.5rem;
 }
 

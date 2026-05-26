@@ -6567,7 +6567,7 @@ export default {
     officialStatus: {
       eyebrow: 'Official channel',
       title: '官渠状态',
-      subtitle: '该页面直接读取 OpenAI 官方状态接口并在站内展示，不再使用 iframe 嵌入。',
+      subtitle: '该页面直接读取 OpenAI 官方状态接口并在站内展示',
       refresh: '刷新状态',
       fullyOperational: 'We’re fully operational',
       degradedHeadline: 'Some systems are experiencing issues',
@@ -6591,7 +6591,7 @@ export default {
       noIssues: 'We’re not aware of any issues affecting our systems.',
       degradedSummary: '当前有 {services} 个组件处于非正常状态。',
       activeIncidentSummary: '当前有 {incidents} 个活动事件，涉及 {services} 个非正常组件。',
-      samplingHint: '历史 uptime 根据每 5 分钟一次官方接口采样。',
+      samplingHint: '历史窗口固定显示最近 288 个样本；每 5 分钟采样一次，uptime 按这 288 个可见样本统计。',
       impactUnknown: '影响范围待确认',
       impact: {
         none: '无明显影响',
