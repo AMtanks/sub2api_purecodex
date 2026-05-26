@@ -12,6 +12,7 @@ import { useRoutePrefetch } from '@/composables/useRoutePrefetch'
 import { getSetupStatus } from '@/api/setup'
 import { resolveCompletedSetupRedirectPath } from './setupRedirect'
 import { resolveDocumentTitle } from './title'
+import { resolveCustomPageDisplayTitle } from '@/utils/openaiStatus'
 
 /**
  * Route definitions with lazy loading
@@ -738,9 +739,10 @@ router.beforeEach(async (to, _from, next) => {
     const adminSettingsStore = useAdminSettingsStore()
     const menuItem = publicItems.find((item) => item.id === id)
       ?? (authStore.isAdmin ? adminSettingsStore.customMenuItems.find((item) => item.id === id) : undefined)
-    if (menuItem?.label) {
+    const customTitle = resolveCustomPageDisplayTitle(menuItem)
+    if (customTitle) {
       const siteName = appStore.siteName || 'Sub2API'
-      document.title = `${menuItem.label} - ${siteName}`
+      document.title = `${customTitle} - ${siteName}`
     } else {
       document.title = resolveDocumentTitle(to.meta.title, appStore.siteName, to.meta.titleKey as string)
     }

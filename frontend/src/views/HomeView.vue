@@ -66,7 +66,7 @@
           <h1 class="home-title">
             <span class="block">{{ siteName }}</span>
             <ShinyText
-              text="做最便宜的中转"
+              text="便宜、高缓、"
               color="#d8fff9"
               shine-color="#ffffff"
               :speed="2.8"
@@ -118,7 +118,7 @@
             <div class="home-metric-panel">
               <div class="flex items-center justify-between gap-4">
                 <div>
-                  <p class="text-sm font-medium text-teal-100/68">12h 费率估算</p>
+                  <p class="text-sm font-medium text-teal-100/68">24h 费率估算</p>
                   <h2 class="mt-2 text-2xl font-semibold text-white">1元约等效</h2>
                 </div>
                 <div class="rounded-2xl border border-teal-300/20 bg-teal-300/10 p-3 text-teal-100">
@@ -138,19 +138,19 @@
                   <span class="pb-3 text-2xl font-semibold text-teal-100/90">M tokens</span>
                 </div>
                 <p class="mt-3 text-sm text-slate-300/72">
-                  基于后端近 24 小时总 Token 与实际扣费，再按站内汇率 1 元≈11 额度换算，每 1 分钟刷新一次。
+                  基于后端近 24 小时总 Token 与实际扣费，每 1 分钟刷新一次。
                 </p>
               </div>
 
               <div class="mt-8 grid gap-3 sm:grid-cols-2">
                 <div class="home-stat-box">
-                  <span>12h Tokens</span>
+                  <span>24h Tokens</span>
                   <strong>
                     <CountUp :from="0" :to="homeStats?.total_tokens ?? 0" :duration="1.2" separator="," />
                   </strong>
                 </div>
                 <div class="home-stat-box">
-                  <span>12h Cost</span>
+                  <span>24h Cost</span>
                   <strong>{{ formattedCost }}</strong>
                 </div>
               </div>

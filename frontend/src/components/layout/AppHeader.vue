@@ -218,6 +218,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAppStore, useAuthStore, useOnboardingStore } from '@/stores'
 import { useAdminSettingsStore } from '@/stores/adminSettings'
+import { resolveCustomPageDisplayTitle } from '@/utils/openaiStatus'
 import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
 import SubscriptionProgressMini from '@/components/common/SubscriptionProgressMini.vue'
 import AnnouncementBell from '@/components/common/AnnouncementBell.vue'
@@ -269,7 +270,8 @@ const pageTitle = computed(() => {
     const publicItems = appStore.cachedPublicSettings?.custom_menu_items ?? []
     const menuItem = publicItems.find((item) => item.id === id)
       ?? (authStore.isAdmin ? adminSettingsStore.customMenuItems.find((item) => item.id === id) : undefined)
-    if (menuItem?.label) return menuItem.label
+    const customTitle = resolveCustomPageDisplayTitle(menuItem)
+    if (customTitle) return customTitle
   }
   const titleKey = route.meta.titleKey as string
   if (titleKey) {

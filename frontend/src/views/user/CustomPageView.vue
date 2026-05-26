@@ -76,6 +76,138 @@
           ></div>
         </div>
 
+        <div v-else-if="isOfficialStatusPage" class="official-status-shell">
+          <div class="official-status-header">
+            <div>
+              <p class="official-status-eyebrow">{{ t('customPage.officialStatus.eyebrow') }}</p>
+              <h2 class="official-status-title">{{ t('customPage.officialStatus.title') }}</h2>
+              <p class="official-status-subtitle">{{ t('customPage.officialStatus.subtitle') }}</p>
+            </div>
+            <div class="official-status-actions">
+              <button
+                type="button"
+                class="btn btn-secondary btn-sm"
+                :disabled="officialStatusLoading"
+                @click="refreshOfficialStatus()"
+              >
+                <Icon name="refresh" size="sm" class="mr-1.5" :stroke-width="2" />
+                {{ t('customPage.officialStatus.refresh') }}
+              </button>
+              <a
+                :href="menuItem?.url || 'https://status.openai.com/'"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="btn btn-secondary btn-sm"
+              >
+                <Icon name="externalLink" size="sm" class="mr-1.5" :stroke-width="2" />
+                {{ t('customPage.openInNewTab') }}
+              </a>
+            </div>
+          </div>
+
+          <div v-if="officialStatusLoading && !officialStatusSummary" class="flex flex-1 items-center justify-center py-12">
+            <div
+              class="h-8 w-8 animate-spin rounded-full border-2 border-primary-500 border-t-transparent"
+            ></div>
+          </div>
+
+          <div v-else-if="officialStatusError && !officialStatusSummary" class="official-status-empty">
+            <div class="official-status-empty-icon">
+              <Icon name="exclamationTriangle" size="lg" class="text-amber-500" />
+            </div>
+            <h3>{{ t('customPage.officialStatus.loadFailedTitle') }}</h3>
+            <p>{{ officialStatusError }}</p>
+          </div>
+
+          <div v-else-if="officialStatusSummary" class="official-status-content">
+            <div class="official-status-summary-grid">
+              <div class="official-status-summary-card official-status-summary-card-primary">
+                <span class="official-status-card-label">{{ t('customPage.officialStatus.overallStatus') }}</span>
+                <div class="official-status-card-main">
+                  <span class="official-status-badge" :class="officialStatusBadgeClass">
+                    {{ officialStatusSummary.status.description }}
+                  </span>
+                </div>
+                <p class="official-status-card-footnote">
+                  {{ t('customPage.officialStatus.lastUpdated', { time: formattedOfficialStatusUpdatedAt }) }}
+                </p>
+              </div>
+
+              <div class="official-status-summary-card">
+                <span class="official-status-card-label">{{ t('customPage.officialStatus.activeIncidents') }}</span>
+                <div class="official-status-card-main">
+                  <span class="official-status-card-value">{{ activeIncidentCount }}</span>
+                </div>
+                <p class="official-status-card-footnote">{{ t('customPage.officialStatus.autoRefreshHint') }}</p>
+              </div>
+
+              <div class="official-status-summary-card">
+                <span class="official-status-card-label">{{ t('customPage.officialStatus.affectedServices') }}</span>
+                <div class="official-status-card-main">
+                  <span class="official-status-card-value">{{ nonOperationalComponentCount }}</span>
+                </div>
+                <p class="official-status-card-footnote">{{ t('customPage.officialStatus.serviceCount', { count: sortedComponents.length }) }}</p>
+              </div>
+            </div>
+
+            <div v-if="activeIncidents.length > 0" class="official-status-section">
+              <div class="official-status-section-header">
+                <h3>{{ t('customPage.officialStatus.activeIncidentsSection') }}</h3>
+                <span class="official-status-section-count">{{ activeIncidents.length }}</span>
+              </div>
+              <div class="official-incident-list">
+                <article
+                  v-for="incident in activeIncidents"
+                  :key="incident.id"
+                  class="official-incident-card"
+                >
+                  <div class="official-incident-topline">
+                    <h4>{{ incident.name }}</h4>
+                    <span class="official-status-chip official-status-chip-incident">{{ formatIncidentStatus(incident.status) }}</span>
+                  </div>
+                  <p class="official-incident-meta">
+                    {{ formatIncidentImpact(incident.impact) }}
+                    <span v-if="incident.updated_at"> · {{ formatDateTime(incident.updated_at) }}</span>
+                  </p>
+                  <a
+                    v-if="incident.shortlink"
+                    :href="incident.shortlink"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="official-status-link"
+                  >
+                    {{ t('customPage.officialStatus.viewIncident') }}
+                  </a>
+                </article>
+              </div>
+            </div>
+
+            <div class="official-status-section">
+              <div class="official-status-section-header">
+                <h3>{{ t('customPage.officialStatus.servicesSection') }}</h3>
+                <span class="official-status-section-count">{{ sortedComponents.length }}</span>
+              </div>
+              <div class="official-service-grid">
+                <article
+                  v-for="component in sortedComponents"
+                  :key="component.id"
+                  class="official-service-card"
+                >
+                  <div class="official-service-card-topline">
+                    <h4>{{ component.name }}</h4>
+                    <span
+                      class="official-status-chip"
+                      :class="componentStatusClass(component.status)"
+                    >
+                      {{ formatComponentStatus(component.status) }}
+                    </span>
+                  </div>
+                </article>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- URL not configured -->
         <div v-else-if="!isValidUrl" class="flex h-full items-center justify-center p-10 text-center">
           <div class="max-w-md">
@@ -125,6 +257,11 @@ import { useAdminSettingsStore } from '@/stores/adminSettings'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { buildEmbeddedUrl, detectTheme } from '@/utils/embedded-url'
+import {
+  fetchOpenAIStatusSummary,
+  isOfficialStatusMenuItem,
+  type OpenAIStatusSummary,
+} from '@/utils/openaiStatus'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 
@@ -147,7 +284,12 @@ const markdownContainer = ref<HTMLElement | null>(null)
 const tocItems = ref<TocItem[]>([])
 const tocVisible = ref(typeof window !== 'undefined' ? window.innerWidth > 768 : true)
 const activeHeadingId = ref('')
+const officialStatusSummary = ref<OpenAIStatusSummary | null>(null)
+const officialStatusLoading = ref(false)
+const officialStatusError = ref('')
 let themeObserver: MutationObserver | null = null
+let officialStatusAbortController: AbortController | null = null
+let officialStatusRefreshTimer: number | null = null
 
 const menuItemId = computed(() => route.params.id as string)
 
@@ -171,9 +313,10 @@ const markdownSlug = computed(() => {
 })
 
 const isMarkdownMode = computed(() => !!markdownSlug.value)
+const isOfficialStatusPage = computed(() => isOfficialStatusMenuItem(menuItem.value))
 
 const embeddedUrl = computed(() => {
-  if (!menuItem.value || isMarkdownMode.value) return ''
+  if (!menuItem.value || isMarkdownMode.value || isOfficialStatusPage.value) return ''
   return buildEmbeddedUrl(
     menuItem.value.url,
     authStore.user?.id,
@@ -184,10 +327,37 @@ const embeddedUrl = computed(() => {
 })
 
 const isValidUrl = computed(() => {
-  if (isMarkdownMode.value) return false
+  if (isMarkdownMode.value || isOfficialStatusPage.value) return false
   const url = embeddedUrl.value
   return url.startsWith('http://') || url.startsWith('https://')
 })
+
+const sortedComponents = computed(() => {
+  const components = officialStatusSummary.value?.components ?? []
+  return [...components].sort((a, b) => {
+    const aOperational = a.status === 'operational' ? 1 : 0
+    const bOperational = b.status === 'operational' ? 1 : 0
+    if (aOperational !== bOperational) return aOperational - bOperational
+    return (a.position ?? 0) - (b.position ?? 0)
+  })
+})
+
+const activeIncidents = computed(() =>
+  (officialStatusSummary.value?.incidents ?? []).filter((incident) => incident.status !== 'resolved')
+)
+
+const activeIncidentCount = computed(() => activeIncidents.value.length)
+const nonOperationalComponentCount = computed(() =>
+  sortedComponents.value.filter((component) => component.status !== 'operational').length
+)
+
+const formattedOfficialStatusUpdatedAt = computed(() => {
+  const updatedAt = officialStatusSummary.value?.page.updated_at
+  if (!updatedAt) return '--'
+  return formatDateTime(updatedAt)
+})
+
+const officialStatusBadgeClass = computed(() => statusIndicatorClass(officialStatusSummary.value?.status.indicator))
 
 function generateHeadingId(text: string, index: number): string {
   const base = text
@@ -271,6 +441,99 @@ async function fetchAndRenderMarkdown(slug: string) {
   }
 }
 
+function clearOfficialStatusTimer() {
+  if (officialStatusRefreshTimer !== null) {
+    window.clearInterval(officialStatusRefreshTimer)
+    officialStatusRefreshTimer = null
+  }
+}
+
+function stopOfficialStatusFetch() {
+  officialStatusAbortController?.abort()
+  officialStatusAbortController = null
+}
+
+async function refreshOfficialStatus() {
+  if (!isOfficialStatusPage.value) return
+  stopOfficialStatusFetch()
+  officialStatusAbortController = new AbortController()
+  officialStatusLoading.value = true
+  officialStatusError.value = ''
+
+  try {
+    officialStatusSummary.value = await fetchOpenAIStatusSummary(officialStatusAbortController.signal)
+  } catch (error) {
+    if ((error as Error).name === 'AbortError') return
+    officialStatusError.value = t('customPage.officialStatus.loadFailedDesc')
+  } finally {
+    officialStatusLoading.value = false
+  }
+}
+
+function ensureOfficialStatusRefresh() {
+  clearOfficialStatusTimer()
+  if (!isOfficialStatusPage.value || typeof window === 'undefined') return
+  officialStatusRefreshTimer = window.setInterval(() => {
+    void refreshOfficialStatus()
+  }, 60_000)
+}
+
+function formatDateTime(value?: string): string {
+  if (!value) return '--'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return new Intl.DateTimeFormat(locale.value === 'zh' ? 'zh-CN' : 'en-US', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date)
+}
+
+function formatComponentStatus(status: string): string {
+  const key = `customPage.officialStatus.componentStatus.${status}`
+  const translated = t(key)
+  return translated === key ? status : translated
+}
+
+function formatIncidentStatus(status: string): string {
+  const key = `customPage.officialStatus.incidentStatus.${status}`
+  const translated = t(key)
+  return translated === key ? status : translated
+}
+
+function formatIncidentImpact(impact?: string): string {
+  if (!impact) return t('customPage.officialStatus.impactUnknown')
+  const key = `customPage.officialStatus.impact.${impact}`
+  const translated = t(key)
+  return translated === key ? impact : translated
+}
+
+function componentStatusClass(status: string): string {
+  return statusIndicatorClass(status)
+}
+
+function statusIndicatorClass(indicator?: string): string {
+  switch (indicator) {
+    case 'none':
+    case 'operational':
+      return 'official-status-chip-ok'
+    case 'minor':
+    case 'degraded_performance':
+      return 'official-status-chip-warn'
+    case 'major':
+    case 'partial_outage':
+    case 'under_maintenance':
+      return 'official-status-chip-issue'
+    case 'critical':
+    case 'major_outage':
+      return 'official-status-chip-critical'
+    default:
+      return 'official-status-chip-neutral'
+  }
+}
+
 function scrollToHeading(id: string) {
   const container = markdownContainer.value
   if (!container) return
@@ -342,6 +605,18 @@ watch(markdownSlug, (slug) => {
   }
 }, { immediate: true })
 
+watch(isOfficialStatusPage, (enabled) => {
+  if (!enabled) {
+    officialStatusSummary.value = null
+    officialStatusError.value = ''
+    stopOfficialStatusFetch()
+    clearOfficialStatusTimer()
+    return
+  }
+  void refreshOfficialStatus()
+  ensureOfficialStatusRefresh()
+}, { immediate: true })
+
 onMounted(async () => {
   pageTheme.value = detectTheme()
 
@@ -369,6 +644,8 @@ onUnmounted(() => {
     themeObserver.disconnect()
     themeObserver = null
   }
+  stopOfficialStatusFetch()
+  clearOfficialStatusTimer()
 })
 </script>
 
@@ -457,6 +734,151 @@ onUnmounted(() => {
   border-radius: 0;
   box-shadow: none;
   background: transparent;
+}
+
+.official-status-shell {
+  @apply flex h-full flex-col gap-6 overflow-auto p-5 md:p-6;
+  @apply bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.08),_transparent_35%),linear-gradient(180deg,_rgba(248,250,252,1),_rgba(255,255,255,1))];
+  @apply dark:bg-[radial-gradient(circle_at_top_left,_rgba(56,189,248,0.14),_transparent_30%),linear-gradient(180deg,_rgba(10,15,26,1),_rgba(6,10,18,1))];
+}
+
+.official-status-header {
+  @apply flex flex-col gap-4 rounded-3xl border border-gray-200/80 bg-white/85 p-5 shadow-sm backdrop-blur md:flex-row md:items-start md:justify-between;
+  @apply dark:border-dark-600 dark:bg-dark-900/85;
+}
+
+.official-status-eyebrow {
+  @apply text-xs font-semibold uppercase tracking-[0.24em] text-sky-600 dark:text-sky-300;
+}
+
+.official-status-title {
+  @apply mt-2 text-2xl font-semibold text-gray-900 dark:text-white;
+}
+
+.official-status-subtitle {
+  @apply mt-2 text-sm text-gray-600 dark:text-dark-300;
+}
+
+.official-status-actions {
+  @apply flex flex-wrap items-center gap-2;
+}
+
+.official-status-content {
+  @apply flex flex-col gap-6;
+}
+
+.official-status-summary-grid {
+  @apply grid gap-4 md:grid-cols-3;
+}
+
+.official-status-summary-card {
+  @apply rounded-3xl border border-gray-200/80 bg-white/90 p-5 shadow-sm;
+  @apply dark:border-dark-600 dark:bg-dark-900/85;
+}
+
+.official-status-summary-card-primary {
+  @apply bg-[linear-gradient(135deg,_rgba(14,165,233,0.12),_rgba(255,255,255,0.95))];
+  @apply dark:bg-[linear-gradient(135deg,_rgba(14,165,233,0.18),_rgba(15,23,42,0.92))];
+}
+
+.official-status-card-label {
+  @apply text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-dark-400;
+}
+
+.official-status-card-main {
+  @apply mt-4 flex items-center gap-3;
+}
+
+.official-status-card-value {
+  @apply text-3xl font-semibold text-gray-900 dark:text-white;
+}
+
+.official-status-card-footnote {
+  @apply mt-4 text-sm text-gray-500 dark:text-dark-400;
+}
+
+.official-status-badge,
+.official-status-chip {
+  @apply inline-flex items-center rounded-full px-3 py-1 text-sm font-medium;
+}
+
+.official-status-chip-ok {
+  @apply bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300;
+}
+
+.official-status-chip-warn {
+  @apply bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300;
+}
+
+.official-status-chip-issue {
+  @apply bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300;
+}
+
+.official-status-chip-critical {
+  @apply bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300;
+}
+
+.official-status-chip-neutral {
+  @apply bg-gray-100 text-gray-700 dark:bg-dark-700 dark:text-dark-200;
+}
+
+.official-status-chip-incident {
+  @apply bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300;
+}
+
+.official-status-section {
+  @apply rounded-3xl border border-gray-200/80 bg-white/90 p-5 shadow-sm;
+  @apply dark:border-dark-600 dark:bg-dark-900/85;
+}
+
+.official-status-section-header {
+  @apply mb-4 flex items-center justify-between gap-3;
+}
+
+.official-status-section-header h3 {
+  @apply text-lg font-semibold text-gray-900 dark:text-white;
+}
+
+.official-status-section-count {
+  @apply rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600 dark:bg-dark-700 dark:text-dark-300;
+}
+
+.official-incident-list,
+.official-service-grid {
+  @apply grid gap-3 md:grid-cols-2 xl:grid-cols-3;
+}
+
+.official-incident-card,
+.official-service-card {
+  @apply rounded-2xl border border-gray-200/80 bg-gray-50/80 p-4;
+  @apply dark:border-dark-600 dark:bg-dark-800/75;
+}
+
+.official-incident-topline,
+.official-service-card-topline {
+  @apply flex items-start justify-between gap-3;
+}
+
+.official-incident-topline h4,
+.official-service-card-topline h4 {
+  @apply text-sm font-semibold text-gray-900 dark:text-white;
+}
+
+.official-incident-meta {
+  @apply mt-2 text-sm text-gray-500 dark:text-dark-400;
+}
+
+.official-status-link {
+  @apply mt-3 inline-flex text-sm font-medium text-primary-600 hover:text-primary-500 dark:text-primary-400;
+}
+
+.official-status-empty {
+  @apply flex flex-1 flex-col items-center justify-center rounded-3xl border border-dashed border-gray-300 px-6 py-12 text-center;
+  @apply dark:border-dark-600;
+}
+
+.official-status-empty-icon {
+  @apply mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-amber-50 dark:bg-amber-500/10;
 }
 </style>
 
