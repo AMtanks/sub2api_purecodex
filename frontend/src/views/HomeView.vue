@@ -30,8 +30,7 @@
             <img :src="siteLogo || '/logo.png'" alt="Logo" class="h-8 w-8 object-contain" />
           </div>
           <div class="hidden leading-tight sm:block">
-            <p class="text-sm font-semibold text-white">{{ siteName }}</p>
-            <p class="text-xs text-teal-100/62">Sub2API Gateway</p>
+            <p class="text-xl font-semibold tracking-tight text-white">{{ siteName }}</p>
           </div>
         </div>
 
@@ -48,7 +47,6 @@
             <Icon name="book" size="md" />
           </a>
           <router-link :to="isAuthenticated ? dashboardPath : '/login'" class="home-login-link">
-            <span v-if="isAuthenticated" class="home-login-avatar">{{ userInitial }}</span>
             <span>{{ isAuthenticated ? t('home.dashboard') : t('home.login') }}</span>
             <Icon name="arrowRight" size="sm" />
           </router-link>
@@ -71,7 +69,7 @@
               shine-color="#ffffff"
               :speed="2.8"
               :spread="115"
-              class-name="block text-teal-95"
+              class-name="block text-teal-100"
             />
           </h1>
           <p class="mt-7 max-w-2xl text-lg leading-9 text-slate-200/78 md:text-xl">
@@ -220,11 +218,6 @@ const githubUrl = 'https://github.com/Wei-Shaw/sub2api'
 const isAuthenticated = computed(() => authStore.isAuthenticated)
 const isAdmin = computed(() => authStore.isAdmin)
 const dashboardPath = computed(() => isAdmin.value ? '/admin/dashboard' : '/dashboard')
-const userInitial = computed(() => {
-  const user = authStore.user
-  if (!user || !user.email) return ''
-  return user.email.charAt(0).toUpperCase()
-})
 const currentYear = computed(() => new Date().getFullYear())
 
 const valueProps = [
@@ -350,17 +343,6 @@ onBeforeUnmount(() => {
 .home-login-link:hover {
   transform: translateY(-1px);
   background: rgb(13 148 136 / 26%);
-}
-
-.home-login-avatar {
-  display: inline-flex;
-  height: 1.35rem;
-  width: 1.35rem;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  background: linear-gradient(135deg, #2dd4bf, #0ea5e9);
-  font-size: 0.68rem;
 }
 
 .home-title {

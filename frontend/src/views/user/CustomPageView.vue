@@ -1025,11 +1025,15 @@ onUnmounted(() => {
 }
 
 .official-group-pills {
-  @apply mt-4 flex flex-wrap gap-[4px];
+  @apply mt-4 flex w-full flex-nowrap items-end gap-px overflow-hidden;
+  min-height: 22px;
 }
 
 .official-group-pill {
-  @apply h-6 w-[7px] rounded-[2px];
+  flex: 1 1 0;
+  min-width: 0;
+  height: 22px;
+  border-radius: 1px;
 }
 
 .official-history-bar-ok {
