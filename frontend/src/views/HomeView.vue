@@ -47,14 +47,6 @@
           >
             <Icon name="book" size="md" />
           </a>
-          <button
-            class="home-icon-button"
-            :title="isDark ? t('home.switchToLight') : t('home.switchToDark')"
-            @click="toggleTheme"
-          >
-            <Icon v-if="isDark" name="sun" size="md" />
-            <Icon v-else name="moon" size="md" />
-          </button>
           <router-link :to="isAuthenticated ? dashboardPath : '/login'" class="home-login-link">
             <span v-if="isAuthenticated" class="home-login-avatar">{{ userInitial }}</span>
             <span>{{ isAuthenticated ? t('home.dashboard') : t('home.login') }}</span>
@@ -74,7 +66,7 @@
           <h1 class="home-title">
             <span class="block">{{ siteName }}</span>
             <ShinyText
-              text="干净、锋利、按量直达"
+              text="做最便宜的中转"
               color="#d8fff9"
               shine-color="#ffffff"
               :speed="2.8"
@@ -83,9 +75,8 @@
             />
           </h1>
           <p class="mt-7 max-w-2xl text-lg leading-9 text-slate-200/78 md:text-xl">
-            {{ siteSubtitle }}
-            <span class="text-white">把账号池、模型路由、计费扣减和接口兼容收束到同一条稳定链路。</span>
-            不做包装话术，只让每一次请求被清楚记录、准确转发、按真实用量结算。
+            <span class="text-white">PureCodex 把账号池、模型路由、计费扣减和接口兼容收束到同一条稳定链路。</span>
+            让每一次请求被清楚记录、准确转发、高缓存率、按真实用量结算。
           </p>
 
           <div class="mt-6 inline-flex items-center gap-3 rounded-full border border-emerald-300/20 bg-white/6 px-4 py-2 text-sm text-emerald-100/92 backdrop-blur">
@@ -127,8 +118,8 @@
             <div class="home-metric-panel">
               <div class="flex items-center justify-between gap-4">
                 <div>
-                  <p class="text-sm font-medium text-teal-100/68">近 24h 汇率估算</p>
-                  <h2 class="mt-2 text-2xl font-semibold text-white">1 元约使用</h2>
+                  <p class="text-sm font-medium text-teal-100/68">12h 费率估算</p>
+                  <h2 class="mt-2 text-2xl font-semibold text-white">1元约等效</h2>
                 </div>
                 <div class="rounded-2xl border border-teal-300/20 bg-teal-300/10 p-3 text-teal-100">
                   <Icon name="bolt" size="lg" />
@@ -147,26 +138,26 @@
                   <span class="pb-3 text-2xl font-semibold text-teal-100/90">M tokens</span>
                 </div>
                 <p class="mt-3 text-sm text-slate-300/72">
-                  基于后端近 24 小时总 Token 与实际扣费自动计算，每 1 小时刷新一次。
+                  基于后端近 24 小时总 Token 与实际扣费，再按站内汇率 1 元≈11 额度换算，每 1 分钟刷新一次。
                 </p>
               </div>
 
               <div class="mt-8 grid gap-3 sm:grid-cols-2">
                 <div class="home-stat-box">
-                  <span>24h Tokens</span>
+                  <span>12h Tokens</span>
                   <strong>
                     <CountUp :from="0" :to="homeStats?.total_tokens ?? 0" :duration="1.2" separator="," />
                   </strong>
                 </div>
                 <div class="home-stat-box">
-                  <span>24h Cost</span>
+                  <span>12h Cost</span>
                   <strong>{{ formattedCost }}</strong>
                 </div>
               </div>
 
               <div class="mt-7 flex items-center justify-between border-t border-white/10 pt-5 text-xs text-slate-300/68">
                 <span>{{ statsStatusText }}</span>
-                <span>Window {{ homeStats?.window_hours ?? 24 }}h</span>
+                <span>Window {{ homeStats?.window_hours ?? 12 }}h</span>
               </div>
             </div>
           </BorderGlow>
@@ -226,7 +217,6 @@ const appStore = useAppStore()
 
 const siteName = computed(() => appStore.cachedPublicSettings?.site_name || appStore.siteName || 'Sub2API')
 const siteLogo = computed(() => appStore.cachedPublicSettings?.site_logo || appStore.siteLogo || '')
-const siteSubtitle = computed(() => appStore.cachedPublicSettings?.site_subtitle || 'AI API Gateway Platform')
 const docUrl = computed(() => appStore.cachedPublicSettings?.doc_url || appStore.docUrl || '')
 const homeContent = computed(() => appStore.cachedPublicSettings?.home_content || '')
 
@@ -235,7 +225,6 @@ const isHomeContentUrl = computed(() => {
   return content.startsWith('http://') || content.startsWith('https://')
 })
 
-const isDark = ref(document.documentElement.classList.contains('dark'))
 const homeStats = ref<PublicHomeUsageStats | null>(null)
 const statsError = ref(false)
 let statsTimer: ReturnType<typeof setInterval> | null = null
@@ -258,8 +247,8 @@ const valueProps = [
     icon: 'shield' as const
   },
   {
-    title: '一键接入',
-    description: '兼容主流 OpenAI 风格调用，统一 Base URL 与 Key 管理，把迁移成本压到最低。',
+    title: '高缓存率',
+    description: '缓存率高达99%，压缩上下文 Compact 也能缓存。',
     icon: 'link' as const
   },
   {
@@ -296,7 +285,10 @@ const supportedModels = [
   }
 ]
 
-const tokensPerCnyMillion = computed(() => Number((homeStats.value?.tokens_per_cny_million ?? 0).toFixed(2)))
+const tokensPerCnyMillion = computed(() => {
+  const baseTokensPerCnyMillion = homeStats.value?.tokens_per_cny_million ?? 0
+  return Number((baseTokensPerCnyMillion * 11).toFixed(2))
+})
 const formattedCost = computed(() => {
   const cost = homeStats.value?.total_actual_cost ?? 0
   return `$${cost.toFixed(cost >= 1 ? 2 : 4)}`
@@ -306,23 +298,6 @@ const statsStatusText = computed(() => {
   if (!homeStats.value) return '正在读取后端统计'
   return `更新于 ${new Date(homeStats.value.updated_at).toLocaleTimeString()}`
 })
-
-function toggleTheme() {
-  isDark.value = !isDark.value
-  document.documentElement.classList.toggle('dark', isDark.value)
-  localStorage.setItem('theme', isDark.value ? 'dark' : 'light')
-}
-
-function initTheme() {
-  const savedTheme = localStorage.getItem('theme')
-  if (
-    savedTheme === 'dark' ||
-    (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)
-  ) {
-    isDark.value = true
-    document.documentElement.classList.add('dark')
-  }
-}
 
 async function refreshHomeStats() {
   try {
@@ -334,13 +309,12 @@ async function refreshHomeStats() {
 }
 
 onMounted(() => {
-  initTheme()
   authStore.checkAuth()
   if (!appStore.publicSettingsLoaded) {
     appStore.fetchPublicSettings()
   }
   refreshHomeStats()
-  statsTimer = setInterval(refreshHomeStats, 60 * 60 * 1000)
+  statsTimer = setInterval(refreshHomeStats, 60 * 1000)
 })
 
 onBeforeUnmount(() => {
